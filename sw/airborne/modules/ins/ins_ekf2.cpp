@@ -26,6 +26,7 @@
  *
  */
 
+#include "std.h"
 #include "modules/ins/ins_ekf2.h"
 #include "modules/nav/waypoints.h"
 #include "modules/core/abi.h"
@@ -35,6 +36,8 @@
 #include "math/pprz_isa.h"
 #include "mcu_periph/sys_time.h"
 #include "autopilot.h"
+#include "modules/datalink/datalink.h"
+#include "modules/datalink/downlink.h"
 
 /** For SITL and NPS we need special includes */
 #if defined SITL && USE_NPS
@@ -196,6 +199,7 @@ static abi_event optical_flow_ev;
 /* Build optical flow and gps message struct based on flow message defined in common.h */
 struct gps_message gps_msg = {};
 struct flow_message flow_msg = {};
+struct ext_vision_message ev_msg = {};
 
 /* All ABI callbacks */
 static void agl_cb(uint8_t sender_id, uint32_t stamp, float distance);
@@ -375,7 +379,7 @@ void ins_ekf2_init(void)
 {
   /* Get the ekf parameters */
   ekf_params = ekf.getParamHandle();
-  ekf_params->mag_fusion_type = MAG_FUSE_TYPE_HEADING;
+  ekf_params->mag_fusion_type = MAG_FUSE_TYPE_NONE;
   ekf_params->is_moving_scaler = 0.8f;
   ekf_params->fusion_mode = INS_EKF2_FUSION_MODE;
   ekf_params->vdist_sensor_type = INS_EKF2_VDIST_SENSOR_TYPE;
@@ -398,6 +402,9 @@ void ins_ekf2_init(void)
   /* Set range as default AGL measurement if possible */
   ekf_params->range_aid = INS_EKF2_RANGE_MAIN_AGL;
 
+  /* Specific settings*/
+  ekf_params->gps_delay_ms = 0.0f;
+  ekf_params->ev_delay_ms = 0.0f;
   ekf_params->accel_noise = 10.0f;
   ekf_params->gps_pos_noise = 0.01f;
 
@@ -715,7 +722,7 @@ static void gps_cb(uint8_t sender_id __attribute__((unused)),
                    uint32_t stamp,
                    struct GpsState *gps_s)
 {
-  printf("height= %f \n", (float) gps_s->hmsl*1e-3f);
+  //printf("height= %f \n", (float) gps_s->hmsl*1e-3f);
   gps_msg.time_usec = stamp;
   gps_msg.lat = gps_s->lla_pos.lat;
   gps_msg.lon = gps_s->lla_pos.lon;
@@ -747,6 +754,47 @@ static void body_to_imu_cb(uint8_t sender_id __attribute__((unused)),
                            struct FloatQuat *q_b2i_f)
 {
   orientationSetQuat_f(&ekf2.body_to_imu, q_b2i_f);
+}
+
+/* Update INS based on External Vision information */
+void external_vision_update(uint8_t *buf)
+{
+  if (DL_EXTERNAL_VISION_ac_id(buf) != AC_ID) { return; } // not for this aircraft
+  
+  uint32_t stamp = get_sys_time_usec();
+  
+  float enu_x = DL_EXTERNAL_VISION_enu_x(buf);
+  float enu_y = DL_EXTERNAL_VISION_enu_y(buf);
+  float enu_z = DL_EXTERNAL_VISION_enu_z(buf);
+
+  float quat_i = DL_EXTERNAL_VISION_quat_i(buf);
+  float quat_x = DL_EXTERNAL_VISION_quat_x(buf);
+  float quat_y = DL_EXTERNAL_VISION_quat_y(buf);
+  float quat_z = DL_EXTERNAL_VISION_quat_z(buf);
+
+  struct FloatQuat orient;
+  struct FloatEulers orient_eulers;
+
+  orient.qi = quat_i;
+  orient.qx = quat_y;   //north
+  orient.qy = -quat_x;  //east
+  orient.qz = -quat_z;  //down
+
+  float_eulers_of_quat(&orient_eulers, &orient);
+  orient_eulers.psi += 90.0/57.6 - 33/57.6;
+
+  ev_msg.posNED = {enu_y, enu_x, -enu_z};
+  ev_msg.quat = {orient.qi, orient.qx, orient.qy, orient.qz};
+  ev_msg.posErr = 0.01;
+  ev_msg.hgtErr = 0.01;
+  ev_msg.angErr = 0.01;
+
+  ekf.setExtVisionData(stamp, &ev_msg);
+
+  printf("EV UPDATE \n");
+  printf("time = %d ", stamp);
+  printf("pos = %f, %f, %f ", enu_y, enu_x, -enu_z);
+  printf("att = %f, %f, %f \n", orient_eulers.phi*57.297795f, orient_eulers.theta*57.297795f, orient_eulers.psi*57.297795f);
 }
 
 /* Update INS based on Optical Flow information */

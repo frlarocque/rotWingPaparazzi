@@ -40,7 +40,10 @@ in your system
 
 from __future__ import print_function
 
+
 import sys
+print(sys.version)
+#import sys
 from os import path, getenv
 from time import time, sleep
 import numpy as np

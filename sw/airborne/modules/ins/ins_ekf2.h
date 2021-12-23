@@ -35,6 +35,7 @@ extern "C" {
 
 #include "modules/ahrs/ahrs.h"
 #include "modules/ins/ins.h"
+#include "mcu_periph/sys_time.h"
 
 struct ekf2_parameters_t {
   int32_t mag_fusion_type;
@@ -46,6 +47,8 @@ extern void ins_ekf2_update(void);
 extern void ins_ekf2_change_param(int32_t unk);
 extern void ins_ekf2_remove_gps(int32_t mode);
 extern struct ekf2_parameters_t ekf2_params;
+
+extern void external_vision_update(uint8_t *buf);
 
 #ifdef __cplusplus
 }

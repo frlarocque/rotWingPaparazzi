@@ -663,6 +663,16 @@ gboolean timeout_transmit_callback(gpointer data)
                  tow,
                  (int)(heading * 10000000.0));           //int32 Course in rad*1e7
     }
+
+    IvySendMsg("0 EXTERNAL_VISION %d %f %f %f %f %f %f %f", aircrafts[rigidBodies[i].id].ac_id,
+		(float) pos.x, 
+		(float) pos.y, 
+		(float) pos.z,
+		(float) orient.qi,
+		(float) orient.qx,
+		(float) orient.qy,
+		(float) orient.qz);
+
     if (must_log) {
       if (log_exists == 0) {
         fp = fopen(nameOfLogfile, "w");
