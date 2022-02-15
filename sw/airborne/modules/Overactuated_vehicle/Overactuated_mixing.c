@@ -36,11 +36,10 @@
 #include "math/pprz_algebra_float.h"
 #include "math/pprz_matrix_decomp_float.c"
 //#include "wls/wls_alloc.h"
+
 /**
  * Variables declaration
  */
-
-
 
 //Array which contains all the actuator values (sent to motor and servos)
 struct overactuated_mixing_t overactuated_mixing;
@@ -56,8 +55,6 @@ float speed_vect[3];
 float pos_vect[3];
 float airspeed;
 float actuator_state[N_ACT_REAL];
-float control_input_INDI[INDI_NUM_ACT];
-float control_input_INDI_state[INDI_NUM_ACT];
 float actuator_state_filt[INDI_NUM_ACT];
 float actuator_state_filt_dot[N_ACT_REAL];
 float euler_error[3];
@@ -69,8 +66,6 @@ float pos_order_body[3];
 float pos_order_earth[3];
 float euler_order[3];
 float psi_order_motor;
-float rate_vect_filt_deg[3];
-float rate_vect_filt_dot_deg[3];
 
 
 //Flight states variables:
@@ -91,9 +86,6 @@ bool activate_tilting_az_PID = 0;
 bool activate_tilting_el_PID = 0;
 bool yaw_with_tilting_PID = 1;
 bool mode_1_control = 0;
-
-bool static_tilt_motor_for_yaw = 0;
-int static_tilt_angle = 0;
 
 bool manual_heading = 0;
 int manual_heading_value_rad = 0;
@@ -1818,12 +1810,11 @@ static void send_actuator_variables( struct transport_tx *trans , struct link_de
 void init_filters(void){
     float sample_time = 1.0 / PERIODIC_FREQUENCY;
     //Sensors cutoff frequency
-    float tau_ang_acc = 1.0 / (OVERACTUATED_MIXING_FILT_CUTOFF_ANG_ACC);
+    float tau_ang_acc = 1.0 / (OVERACTUATED_MIXING_FILT_CUTOFF_ANG_RATES);
     float tau_lin_acc = 1.0 / (OVERACTUATED_MIXING_FILT_CUTOFF_LIN_ACC);
     float tau_el = 1.0 / (OVERACTUATED_MIXING_FILT_CUTOFF_ACTUATORS_EL);
     float tau_az = 1.0 / (OVERACTUATED_MIXING_FILT_CUTOFF_ACTUATORS_AZ);
     float tau_motor = 1.0 / (OVERACTUATED_MIXING_FILT_CUTOFF_ACTUATORS_MOTOR);
-    rate_filter_tau = 1 - exp(-OVERACTUATED_MIXING_FILT_CUTOFF_RATES/PERIODIC_FREQUENCY);
 
     // Initialize filters for the actuators
     for (uint8_t i = 0; i < N_ACT_REAL; i++) {
@@ -1928,7 +1919,7 @@ void init_variables(void){
         //Calculate the angular acceleration via finite difference
         rate_vect_filt_dot[i] = (measurement_rates_filters[i].o[0]
                                  - measurement_rates_filters[i].o[1]) * PERIODIC_FREQUENCY;
-        rate_vect_filt[i] = rate_vect_filt[i] + rate_filter_tau * (rate_vect[i] - rate_vect_filt[i]);
+        rate_vect_filt[i] = measurement_rates_filters[i].o[0];
         acc_vect_filt[i] = measurement_acc_filters[i].o[0];
     }
 
@@ -2241,6 +2232,10 @@ void overactuated_mixing_run(pprz_t in_cmd[])
             indi_u[9] = 0;
             indi_u[10] = 0;
             indi_u[11] = 0;
+
+            rate_vect_filt[0] = 0;
+            rate_vect_filt[1] = 0;
+            rate_vect_filt[2] = 0;
         }
 
         // Get an estimate of the actuator state using the first order dynamics given by the user
