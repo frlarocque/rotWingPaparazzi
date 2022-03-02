@@ -59,7 +59,6 @@ float actuator_state_filt[INDI_NUM_ACT];
 float actuator_state_filt_dot[N_ACT_REAL];
 float euler_error[3];
 float euler_error_integrated[3];
-float angular_body_error[3];
 float pos_error[3];
 float pos_error_integrated[3];
 float pos_order_body[3];
@@ -119,6 +118,7 @@ float R_matrix[3][3];
 float pos_setpoint[3];
 float speed_setpoint[3];
 float euler_setpoint[3];
+float euler_rate_setpoint[3];
 float rate_setpoint[3];
 float acc_setpoint[6];
 float INDI_acceleration_inputs[INDI_INPUTS];
@@ -2274,18 +2274,27 @@ void overactuated_mixing_run(pprz_t in_cmd[])
             euler_error[2] += 2 * M_PI;
         }
 
+        euler_rate_setpoint[0] = euler_error[0] * indi_gains_over.p.phi;
+        euler_rate_setpoint[1] = euler_error[1] * indi_gains_over.p.theta;
+        euler_rate_setpoint[2] = euler_error[2] * indi_gains_over.p.psi;
+        // Adding the forward flight term:
+        if(airspeed > 2) {
+            euler_rate_setpoint[2] = 9.81*tan(euler_vect[0])/airspeed;
+            euler_setpoint[2] = euler_vect[2];
+        }
+
         //Link the euler error with the angular change in the body frame and calculate the rate setpoints
         for (j = 0; j < 3; j++) {
             //Cleanup previous value
-            angular_body_error[j] = 0.;
+            rate_setpoint[j] = 0.;
             for (k = 0; k < 3; k++) {
-                angular_body_error[j] += euler_error[k] * R_matrix[k][j];
+                rate_setpoint[j] += euler_rate_setpoint[k] * R_matrix[k][j];
             }
         }
 
-        rate_setpoint[0] = angular_body_error[0] * indi_gains_over.p.phi;
-        rate_setpoint[1] = angular_body_error[1] * indi_gains_over.p.theta;
-        rate_setpoint[2] = angular_body_error[2] * indi_gains_over.p.psi;
+//        rate_setpoint[0] = angular_body_error[0] * indi_gains_over.p.phi;
+//        rate_setpoint[1] = angular_body_error[1] * indi_gains_over.p.theta;
+//        rate_setpoint[2] = angular_body_error[2] * indi_gains_over.p.psi;
 //        BoundAbs(rate_setpoint[0],OVERACTUATED_MIXING_INDI_MAX_P_ORD);
 //        BoundAbs(rate_setpoint[1],OVERACTUATED_MIXING_INDI_MAX_Q_ORD);
 //        BoundAbs(rate_setpoint[2],OVERACTUATED_MIXING_INDI_MAX_R_ORD);
