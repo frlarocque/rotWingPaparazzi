@@ -2245,6 +2245,7 @@ void overactuated_mixing_run(pprz_t in_cmd[])
 
         euler_setpoint[0] = max_value_error.phi * radio_control.values[RADIO_ROLL] / 9600;
         euler_setpoint[1] = max_value_error.theta * radio_control.values[RADIO_PITCH] / 9600;
+        float psi_rate_stick = 0;
         //Give a specific heading value to keep
         if(manual_heading){
             euler_setpoint[2] = manual_heading_value_rad;
@@ -2252,6 +2253,7 @@ void overactuated_mixing_run(pprz_t in_cmd[])
         //Integrate the stick yaw position to get the psi set point
         else if( abs(radio_control.values[RADIO_YAW]) > deadband_stick_yaw && fabs(euler_error[2]) < max_value_error.psi){
             euler_setpoint[2] = euler_setpoint[2] + stick_gain_yaw * radio_control.values[RADIO_YAW] * M_PI / 180 * .001;
+            psi_rate_stick = stick_gain_yaw * radio_control.values[RADIO_YAW] * M_PI / 180 * .001 * 500;
             //Correct the setpoint in order to always be within -pi and pi
             if(euler_setpoint[2] > M_PI){
                 euler_setpoint[2] -= 2 * M_PI;
@@ -2278,9 +2280,12 @@ void overactuated_mixing_run(pprz_t in_cmd[])
         euler_rate_setpoint[1] = euler_error[1] * indi_gains_over.p.theta;
         euler_rate_setpoint[2] = euler_error[2] * indi_gains_over.p.psi;
         // Adding the forward flight term:
-        if(airspeed > 2) {
-            euler_rate_setpoint[2] = 9.81*tan(euler_vect[0])/airspeed;
+        if(airspeed > 5) {
+            euler_rate_setpoint[2] = 9.81*tan(euler_vect[0])/airspeed + psi_rate_stick;
             euler_setpoint[2] = euler_vect[2];
+        }
+        else{
+            euler_rate_setpoint[2] = psi_rate_stick;
         }
 
         //Link the euler error with the angular change in the body frame and calculate the rate setpoints
