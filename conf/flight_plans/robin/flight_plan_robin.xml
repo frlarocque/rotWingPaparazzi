@@ -19,11 +19,31 @@
 
     <!-- Waypoints for testing the gcnet -->
     <waypoint name="Origin" x="0" y="0" alt="1."/>
-    <waypoint name="WP1" x="-1." y="-1." alt="1."/>
-    <waypoint name="WP2" x="-1." y="1." alt="1."/>
-    <waypoint name="WP3" x="1." y="1." alt="1."/>
-    <waypoint name="WP4" x="1." y="-1." alt="1."/>
+    <waypoint name="P1" x="-1." y="-1." alt="1."/>
+    <waypoint name="P2" x="-1." y="1." alt="1."/>
+    <waypoint name="P3" x="1." y="1." alt="1."/>
+    <waypoint name="P4" x="1." y="-1." alt="1."/>
+
+<!--
+x = cos(33.0/57.6) * x - sin(33.0/57.6) * y;
+y = sin(33.0/57.6) * x + cos(33.0/57.6) * y;
+-->
+
+<!-- 4x4 square alinged with cyberzoo
+    <waypoint name="WP1" x="-0.59647635" y="-2.764817528" alt="1."/>
+    <waypoint name="WP2" x="-2.764817528"  y="0.59647635" alt="1."/>
+    <waypoint name="WP3" x="0.59647635"  y="2.764817528" alt="1."/>
+    <waypoint name="WP4" x="2.764817528"   y="-0.59647635" alt="1."/>
+-->
+
+<!-- 3x4 square alinged with cyberzoo-->
+    <waypoint name="WP1" x="-0.1763146154676516" y="-2.4937748808528193" alt="1."/>
+    <waypoint name="WP2" x="-2.3446557932877643" y="0.8675189974877349" alt="1."/>
+    <waypoint name="WP3" x="0.1763146154676516" y="2.4937748808528193" alt="1."/>
+    <waypoint name="WP4" x="2.3446557932877643" y="-0.8675189974877349" alt="1."/>
+
     <waypoint name="WP5" x="0" y="0" alt="4."/>
+    <waypoint name="WP6" x="0" y="0" alt=".1"/>
 
     <waypoint lat="51.9905834" lon="4.3767710" name="_CZ1"/>
     <waypoint lat="51.9906440" lon="4.3767060" name="_CZ2"/>
@@ -152,7 +172,7 @@
       <stay wp="GOAL"/>
     </block>
     <block name="GoToWP1">
-      <call_once fun="nav_set_heading_deg(0)"/>
+      <call_once fun="nav_set_heading_deg(-33)"/>
       <call_once fun="NavCopyWaypoint(WP_GOAL, WP_WP1)"/>
       <go wp="GOAL"/>
       <stay wp="GOAL"/>
@@ -178,6 +198,12 @@
     <block name="GoToWP5">
       <call_once fun="nav_set_heading_deg(0)"/>
       <call_once fun="NavCopyWaypoint(WP_GOAL, WP_WP5)"/>
+      <go wp="GOAL"/>
+      <stay wp="GOAL"/>
+    </block>
+    <block name="GoToWP6">
+      <call_once fun="nav_set_heading_deg(0)"/>
+      <call_once fun="NavCopyWaypoint(WP_GOAL, WP_WP6)"/>
       <go wp="GOAL"/>
       <stay wp="GOAL"/>
     </block>

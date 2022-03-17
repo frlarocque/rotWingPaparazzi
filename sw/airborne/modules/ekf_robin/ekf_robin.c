@@ -1,12 +1,29 @@
-#include "ekf_gps.h"
+#include <time.h>
+
+#include "ekf_robin.h"
+#include "state.h"
+#include "modules/imu/imu.h"
+
+#include "generated/flight_plan.h"
+
 
 float ekf_X[EKF_NUM_STATES];
+float ekf_U[EKF_NUM_INPUTS];
+float ekf_Z[EKF_NUM_OUTPUTS];
 float ekf_P[EKF_NUM_STATES][EKF_NUM_STATES];
 float ekf_Q[EKF_NUM_INPUTS][EKF_NUM_INPUTS];
 float ekf_R[EKF_NUM_OUTPUTS][EKF_NUM_OUTPUTS];
 
-float ekf_H[EKF_NUM_OUTPUTS][EKF_NUM_STATES] = {{1,0,0,0,0,0,0,0,0,0,0,0,0,0,0},{0,1,0,0,0,0,0,0,0,0,0,0,0,0,0},{0,0,1,0,0,0,0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,1,0,0,0,0,0,0}};
+float ekf_H[EKF_NUM_OUTPUTS][EKF_NUM_STATES] = {{1,0,0,0,0,0,0,0,0,0,0,0,0,0,0},{0,1,0,0,0,0,0,0,0,0,0,0,0,0,0},{0,0,1,0,0,0,0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,1,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,1,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,1,0,0,0,0,0,0}};
 
+float ev_pos[3] = {0.f,0.f,0.f};
+float ev_att[3] = {0.f,0.f,0.f};
+
+bool start = false;
+bool measurement_update = false;
+
+float t0;
+float t1;
 
 void ekf_set_diag(float **a, float *b, int n)
 {
@@ -24,10 +41,12 @@ void ekf_set_diag(float **a, float *b, int n)
 
 void ekf_init(void)
 {
+	printf("ekf init");
 	float X0[EKF_NUM_STATES] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 	float Pdiag[EKF_NUM_STATES] = {1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.};
-	float Qdiag[EKF_NUM_INPUTS] = {5., 5., 5., 0.1, 0.1, 0.1};
-	float Rdiag[EKF_NUM_OUTPUTS] = {0.0001, 0.0001, 0.0001, 0.0001};
+	float Qdiag[EKF_NUM_INPUTS] = {10., 1., 50., 0.01, 0.1, 0.001};
+
+	float Rdiag[EKF_NUM_OUTPUTS] = {0.0001, 0.0001, 0.0001, 0.1, 0.1, 0.1};
 
 	MAKE_MATRIX_PTR(ekf_P_, ekf_P, EKF_NUM_STATES);
 	MAKE_MATRIX_PTR(ekf_Q_, ekf_Q, EKF_NUM_INPUTS);
@@ -657,59 +676,51 @@ void ekf_step(const float U[EKF_NUM_INPUTS], const float Z[EKF_NUM_OUTPUTS], con
 void ekf_prediction_step(const float U[EKF_NUM_INPUTS], const float dt) {
 	// [1] Predicted (a priori) state estimate:
 	float Xkk_1[EKF_NUM_STATES];
-	ekf_f_rk4(ekf_X, U, dt, Xkk_1);
+	// Xkk_1 = f(X,U)
+	ekf_f(ekf_X, U, Xkk_1);
+	// Xkk_1 *= dt
+	float_vect_scale(Xkk_1, dt, EKF_NUM_STATES);
+	// Xkk_1 += X
+	float_vect_add(Xkk_1, ekf_X, EKF_NUM_STATES);	
 
 
 	// [2] Get matrices
 	float F[EKF_NUM_STATES][EKF_NUM_STATES];
-	float L[EKF_NUM_STATES][EKF_NUM_INPUTS];
+	float Ld[EKF_NUM_STATES][EKF_NUM_INPUTS];
 	ekf_F(ekf_X, U, F);
-	ekf_L(ekf_X, U, L);
+	ekf_L(ekf_X, U, Ld);
 
 
 	// [3] Continuous to discrete
-	// Fd = eye(N) + F*dt + F*F*dt**2/2 = I + [I+F*dt/2]*F*dt
-	// Ld = L*dt+F*L*dt**2/2            = [I+F*dt/2]*L*dt
+	// Fd = eye(N) + F*dt
+	// Ld = L*dt
 	float Fd[EKF_NUM_STATES][EKF_NUM_STATES];
-	float Ld[EKF_NUM_STATES][EKF_NUM_INPUTS];
-	float tmp[EKF_NUM_STATES][EKF_NUM_STATES];
 	
 	MAKE_MATRIX_PTR(F_, F, EKF_NUM_STATES);
-	MAKE_MATRIX_PTR(L_, L, EKF_NUM_STATES);
 	MAKE_MATRIX_PTR(Fd_, Fd, EKF_NUM_STATES);
 	MAKE_MATRIX_PTR(Ld_, Ld, EKF_NUM_STATES);
-	MAKE_MATRIX_PTR(tmp_, tmp, EKF_NUM_STATES);
 	
-	// tmp = I+F*dt/2
-	float_mat_diagonal_scal(tmp_, 1, EKF_NUM_STATES);
-	float_mat_sum_scaled(tmp_, F_, dt/2, EKF_NUM_STATES, EKF_NUM_STATES);
+	// Fd = I+F*dt/2
+	float_mat_diagonal_scal(Fd_, 1, EKF_NUM_STATES);
+	float_mat_sum_scaled(Fd_, F_, dt, EKF_NUM_STATES, EKF_NUM_STATES);
 
-	// Ld = tmp*L*dt
-	float_mat_mul(Ld_, tmp_, L_, EKF_NUM_STATES, EKF_NUM_STATES, EKF_NUM_INPUTS);
+	// Ld = Ld*dt
 	float_mat_scale(Ld_, dt, EKF_NUM_STATES, EKF_NUM_INPUTS);
-	
-	// Fd = tmp*F*dt
-	float_mat_mul(Fd_, tmp_, F_, EKF_NUM_STATES, EKF_NUM_STATES, EKF_NUM_STATES);
-	float_mat_scale(Fd_, dt, EKF_NUM_STATES, EKF_NUM_STATES);
 
-	// Fd += I
-	int i;
-	for (i = 0; i < EKF_NUM_STATES; i++) {
-		Fd[i][i] += 1;
-	}
-	
-	
+
 	// [4] Predicted covariance estimate:
 	// Pkk_1 = Fd*P*Fd.T + Ld*Q*Ld.T
 	float Pkk_1[EKF_NUM_STATES][EKF_NUM_STATES];
 	float LdT[EKF_NUM_INPUTS][EKF_NUM_STATES];
 	float QLdT[EKF_NUM_INPUTS][EKF_NUM_STATES];
+	float tmp[EKF_NUM_STATES][EKF_NUM_STATES];
 
 	MAKE_MATRIX_PTR(Pkk_1_, Pkk_1, EKF_NUM_STATES);
 	MAKE_MATRIX_PTR(ekf_P_, ekf_P, EKF_NUM_STATES);
 	MAKE_MATRIX_PTR(ekf_Q_, ekf_Q, EKF_NUM_STATES);
 	MAKE_MATRIX_PTR(LdT_, LdT, EKF_NUM_INPUTS);
 	MAKE_MATRIX_PTR(QLdT_, QLdT, EKF_NUM_INPUTS);
+	MAKE_MATRIX_PTR(tmp_, tmp, EKF_NUM_STATES);
 
 	// Fd = Fd.T
 	float_mat_transpose_square(Fd_, EKF_NUM_STATES);
@@ -742,7 +753,7 @@ void ekf_prediction_step(const float U[EKF_NUM_INPUTS], const float dt) {
 	float_mat_copy(ekf_P_, Pkk_1_, EKF_NUM_STATES, EKF_NUM_STATES);	
 }
 
-void ekf_measurement_step(const float Z[EKF_NUM_OUTPUTS], const float dt) {
+void ekf_measurement_step(const float Z[EKF_NUM_OUTPUTS]) {
 	// Xkk_1 = X
 	float Xkk_1[EKF_NUM_STATES];
 	float_vect_copy(Xkk_1, ekf_X, EKF_NUM_STATES);
@@ -825,6 +836,93 @@ void ekf_measurement_step(const float Z[EKF_NUM_OUTPUTS], const float dt) {
 	float_mat_mul(ekf_P_, tmp_, Pkk_1_, EKF_NUM_STATES, EKF_NUM_STATES, EKF_NUM_STATES);
 }
 
+void ekf_run(void)
+{
+	t1 = get_sys_time_float();
+	float dt = t1-t0;
+	t0 = t1;
+
+	if (start) {
+		// prediction step
+		printf("ekf prediction step U = %f, %f, %f, %f, %f, %f dt = %f \n", ekf_U[0], ekf_U[1], ekf_U[2], ekf_U[3], ekf_U[4], ekf_U[5], dt);
+		ekf_prediction_step(ekf_U, dt);
+
+		// measurement step
+		if (measurement_update) {
+			printf("ekf measurement step Z = %f, %f, %f, %f \n", ekf_Z[0], ekf_Z[1], ekf_Z[2], ekf_Z[3]);
+			ekf_measurement_step(ekf_Z);
+			measurement_update = false;
+		}
+	}
+	
+	// set input values
+	ekf_U[0] = ACCEL_FLOAT_OF_BFP(imu.accel.x);
+	ekf_U[1] = ACCEL_FLOAT_OF_BFP(imu.accel.y);
+	ekf_U[2] = ACCEL_FLOAT_OF_BFP(imu.accel.z);
+	ekf_U[3] = RATE_FLOAT_OF_BFP(imu.gyro.p);
+	ekf_U[4] = RATE_FLOAT_OF_BFP(imu.gyro.q);
+	ekf_U[5] = RATE_FLOAT_OF_BFP(imu.gyro.r);
+}
 
 
+void external_vision_update(uint8_t *buf)
+{
+  if (DL_EXTERNAL_VISION_ac_id(buf) != AC_ID) { return; } // not for this aircraft
+  
+  float enu_x = DL_EXTERNAL_VISION_enu_x(buf);
+  float enu_y = DL_EXTERNAL_VISION_enu_y(buf);
+  float enu_z = DL_EXTERNAL_VISION_enu_z(buf);
+
+  float quat_i = DL_EXTERNAL_VISION_quat_i(buf);
+  float quat_x = DL_EXTERNAL_VISION_quat_x(buf);
+  float quat_y = DL_EXTERNAL_VISION_quat_y(buf);
+  float quat_z = DL_EXTERNAL_VISION_quat_z(buf);
+
+  struct FloatQuat orient;
+  struct FloatEulers orient_eulers;
+
+  orient.qi = quat_i;
+  orient.qx = quat_y;   //north
+  orient.qy = -quat_x;  //east
+  orient.qz = -quat_z;  //down
+
+  float_eulers_of_quat(&orient_eulers, &orient);
+  orient_eulers.psi += 90.0/57.6 - 33/57.6;
+
+  //fix psi
+  float delta_psi = orient_eulers.psi - ev_att[2];
+  if (delta_psi > M_PI) {
+  	delta_psi -= 2*M_PI;
+  } else if (delta_psi < -M_PI) {
+  	delta_psi += 2*M_PI;
+  }
+
+  ev_pos[0] = enu_y;
+  ev_pos[1] = enu_x;
+  ev_pos[2] = -enu_z;
+  ev_att[0] = orient_eulers.phi;
+  ev_att[1] = orient_eulers.theta;
+  ev_att[2] = orient_eulers.psi;
+
+  // ekf starts at the first ev update
+  if (start == false) {
+  	start = true;
+
+	// initial guess
+	ekf_X[0] = ev_pos[0];
+	ekf_X[1] = ev_pos[1];
+	ekf_X[2] = ev_pos[2];
+	ekf_X[6] = ev_att[0];
+	ekf_X[7] = ev_att[1];
+	ekf_X[8] = ev_att[2];
+  }
+  
+  measurement_update = true;
+  ekf_Z[0] = ev_pos[0];
+  ekf_Z[1] = ev_pos[1];
+  ekf_Z[2] = ev_pos[2];
+  ekf_Z[3] = ev_att[0];
+  ekf_Z[4] = ev_att[1];
+  ekf_Z[5] += delta_psi;  
+}
 

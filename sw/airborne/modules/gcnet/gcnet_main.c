@@ -49,6 +49,10 @@
 #include "boards/bebop/actuators.h"
 #include "modules/core/abi.h"
 
+/** EKF robin */
+#include "modules/ekf_robin/ekf_robin.h"
+
+
 uint16_t nn_rpm_obs[4] = {0,0,0,0};
 //uint16_t nn_rpm_ref[4] = {0,0,0,0};
 static abi_event rpm_read_ev;
@@ -77,6 +81,11 @@ float t0;
 float t1;
 
 bool active = false;
+float dist_to_waypoint = 10;
+float psi_ref = 0;
+
+//float ev_pos[3] = {0.f,0.f,0.f};
+//float ev_att[3] = {0.f,0.f,0.f};
 
 // filter angular velocities and rpms
 Butterworth2LowPass filter_p;
@@ -112,8 +121,8 @@ void gcnet_init(void)
 	// ABI messaging for reading rpm
 	AbiBindMsgRPM(RPM_SENSOR_ID, &rpm_read_ev, rpm_read_cb);
 
-	// Initialize filters (cutoff frequency=4.0)
-  	float tau_ = 1.0 / (2.0 * M_PI * 4.0);				// tau = 1/(2*pi*cutoff_frequency)
+	// Initialize filters (cutoff frequency=8.0)
+  	float tau_ = 1.0 / (2.0 * M_PI * 8.0);				// tau = 1/(2*pi*cutoff_frequency)
 
 	init_butterworth_2_low_pass(&filter_p, tau_, sample_time, 0.0);
 	init_butterworth_2_low_pass(&filter_q, tau_, sample_time, 0.0);
@@ -134,6 +143,7 @@ void gcnet_run(void)
 	// t0 = t1;
 
 	// set goal to next waypoint once activated
+
 	if (!active && autopilot_get_mode() == AP_MODE_ATTITUDE_DIRECT) {
 		if (WP_EQUALS(WP_GOAL, WP_WP1)) {
 			waypoint_copy(WP_GOAL, WP_WP2);
@@ -149,11 +159,20 @@ void gcnet_run(void)
 		}
 	}
 
+
 	// only active when in ATT mode
 	active = autopilot_get_mode() == AP_MODE_ATTITUDE_DIRECT;
 
-	struct FloatEulers *att   = stateGetNedToBodyEulers_f();
-	struct FloatQuat   *quat  = stateGetNedToBodyQuat_f();
+	struct FloatEulers att; //   = stateGetNedToBodyEulers_f();
+	//substitute ekf values
+	att.phi   = ekf_X[6];
+	att.theta = ekf_X[7];
+	att.psi   = ekf_X[8];
+
+	struct FloatQuat   quat; //  = stateGetNedToBodyQuat_f();
+	//substitute ekf values
+	float_quat_of_eulers(&quat, &att);
+
 	struct FloatRates  *rates = stateGetBodyRates_f();
 	
 	//struct Int32Vect3 *body_accel_i;
@@ -163,7 +182,7 @@ void gcnet_run(void)
 	struct NedCoor_f *acc   = stateGetAccelNed_f();
 	struct FloatVect3 acc_ned = {acc->x, acc->y, acc->z-9.81};
 	struct FloatVect3 acc_body;
-	float_quat_vmult(&acc_body, quat, &acc_ned);
+	float_quat_vmult(&acc_body, &quat, &acc_ned);
 	
 	
 	// get waypoint position in body frame
@@ -172,19 +191,19 @@ void gcnet_run(void)
 	ENU_OF_TO_NED(waypoint_ned, waypoints[WP_GOAL].enu_f);
 
 	struct FloatVect3 delta_pos_ned = {
-		waypoint_ned.x - pos->x,
-		waypoint_ned.y - pos->y,
-		waypoint_ned.z - pos->z
+		waypoint_ned.x - ekf_X[0],
+		waypoint_ned.y - ekf_X[1],
+		waypoint_ned.z - ekf_X[2]
 	};
 
 	struct FloatVect3 waypoint_body;
-	float_quat_vmult(&waypoint_body, quat, &delta_pos_ned);
+	float_quat_vmult(&waypoint_body, &quat, &delta_pos_ned);
 
 	// get velocity in body frame
 	struct NedCoor_f *vel = stateGetSpeedNed_f();
-	struct FloatVect3 vel_ned = {vel->x, vel->y, vel->z};
+	struct FloatVect3 vel_ned = {ekf_X[3], ekf_X[4], ekf_X[5]};
 	struct FloatVect3 vel_body;
-	float_quat_vmult(&vel_body, quat, &vel_ned);
+	float_quat_vmult(&vel_body, &quat, &vel_ned);
 
 	// update filters
 	update_butterworth_2_low_pass(&filter_p, rates->p);
@@ -219,10 +238,11 @@ void gcnet_run(void)
 	Mz_modeled = k_r1*(-w1*w1 + w2*w2 - w3*w3 + w4*w4) + k_r2*(-d_w1 + d_w2 - d_w3 + d_w4) - k_rr*r_;
 	az_modeled = -k_omega*(w1*w1 + w2*w2 + w3*w3 + w4*w4);
 
-/*	
-	// set goal to next waypoint once waypoint is reached (within 0.1 meter)
-	float dist_to_waypoint = sqrtf(delta_pos_ned.x*delta_pos_ned.x + delta_pos_ned.y*delta_pos_ned.y + delta_pos_ned.z*delta_pos_ned.z);
-	if (dist_to_waypoint < 0.1 && autopilot_get_mode() == AP_MODE_ATTITUDE_DIRECT) {
+	
+
+/*
+	// set goal to next waypoint once waypoint is reached (within 0.3 meter)
+	if (dist_to_waypoint < 0.3 && dist_to_waypoint < sqrtf(delta_pos_ned.x*delta_pos_ned.x + delta_pos_ned.y*delta_pos_ned.y + delta_pos_ned.z*delta_pos_ned.z) && autopilot_get_mode() == AP_MODE_ATTITUDE_DIRECT) {
 		if (WP_EQUALS(WP_GOAL, WP_WP1)) {
 			waypoint_copy(WP_GOAL, WP_WP2);
 		}
@@ -235,9 +255,71 @@ void gcnet_run(void)
 		else if (WP_EQUALS(WP_GOAL, WP_WP4)) {
 			waypoint_copy(WP_GOAL, WP_WP1);
 		}
+		printf("dist_to_waypoint = %f \n", dist_to_waypoint);
 	}
-*/
+	ENU_OF_TO_NED(waypoint_ned, waypoints[WP_GOAL].enu_f);
 
+	struct FloatVect3 delta_pos_ned2 = {
+		waypoint_ned.x - pos->x,
+		waypoint_ned.y - pos->y,
+		waypoint_ned.z - pos->z
+	};
+	dist_to_waypoint = sqrtf(delta_pos_ned2.x*delta_pos_ned2.x + delta_pos_ned2.y*delta_pos_ned2.y + delta_pos_ned2.z*delta_pos_ned2.z);
+*/
+	if (autopilot_get_mode() == AP_MODE_ATTITUDE_DIRECT) {
+		if (WP_EQUALS(WP_GOAL, WP_WP1)) {
+			psi_ref = atan2(waypoints[WP_WP1].enu_f.x-waypoints[WP_WP4].enu_f.x, waypoints[WP_WP1].enu_f.y-waypoints[WP_WP4].enu_f.y);
+			
+			// set next waypoint once drone passes the plane perpendicular to the waypoint (psi_ref + pi/4 direction)
+			float normal_x = cos(psi_ref + M_PI/4);
+			float normal_y = sin(psi_ref + M_PI/4);		
+			if (-delta_pos_ned.x*normal_x - delta_pos_ned.y*normal_y > -0.5) {
+				waypoint_copy(WP_GOAL, WP_WP2);
+			}
+		}
+		else if (WP_EQUALS(WP_GOAL, WP_WP2)) {
+			psi_ref = atan2(waypoints[WP_WP2].enu_f.x-waypoints[WP_WP1].enu_f.x, waypoints[WP_WP2].enu_f.y-waypoints[WP_WP1].enu_f.y);
+			
+			// set next waypoint once drone passes the plane perpendicular to the waypoint (psi_ref + pi/4 direction)
+			float normal_x = cos(psi_ref + M_PI/4);
+			float normal_y = sin(psi_ref + M_PI/4);		
+			if (-delta_pos_ned.x*normal_x - delta_pos_ned.y*normal_y > -0.5) {
+				waypoint_copy(WP_GOAL, WP_WP3);
+			}
+		}
+		else if (WP_EQUALS(WP_GOAL, WP_WP3)) {
+			psi_ref = atan2(waypoints[WP_WP3].enu_f.x-waypoints[WP_WP2].enu_f.x, waypoints[WP_WP3].enu_f.y-waypoints[WP_WP2].enu_f.y);
+			
+			// set next waypoint once drone passes the plane perpendicular to the waypoint (psi_ref + pi/4 direction)
+			float normal_x = cos(psi_ref + M_PI/4);
+			float normal_y = sin(psi_ref + M_PI/4);		
+			if (-delta_pos_ned.x*normal_x - delta_pos_ned.y*normal_y > -0.5) {
+				waypoint_copy(WP_GOAL, WP_WP4);
+			}
+			
+		}
+		else if (WP_EQUALS(WP_GOAL, WP_WP4)) {
+			psi_ref = atan2(waypoints[WP_WP4].enu_f.x-waypoints[WP_WP3].enu_f.x, waypoints[WP_WP4].enu_f.y-waypoints[WP_WP3].enu_f.y);
+			
+			// set next waypoint once drone passes the plane perpendicular to the waypoint (psi_ref + pi/4 direction)
+			float normal_x = cos(psi_ref + M_PI/4);
+			float normal_y = sin(psi_ref + M_PI/4);		
+			if (-delta_pos_ned.x*normal_x - delta_pos_ned.y*normal_y > -0.5) {
+				waypoint_copy(WP_GOAL, WP_WP1);
+			}
+			
+		}
+	}
+
+	state_nn[8] = att.psi-psi_ref;
+	
+	// ensure that -pi < psi < pi
+	while (state_nn[8] > M_PI) {
+		state_nn[8] -= 2*M_PI;
+	}
+	while (state_nn[8] < -M_PI) {
+		state_nn[8] += 2*M_PI;
+	}
 
 	// neural network input 
 	state_nn[0] = waypoint_body.x;
@@ -248,9 +330,9 @@ void gcnet_run(void)
 	state_nn[4] = vel_body.y;
 	state_nn[5] = vel_body.z;
 	
-	state_nn[6] = att->phi;
-	state_nn[7] = att->theta;
-        state_nn[8] = att->psi;
+	state_nn[6] = att.phi;
+	state_nn[7] = att.theta;
+	//state_nn[8] = att.psi;
 
 	state_nn[9] = rates->p;
 	state_nn[10] = rates->q;
@@ -261,11 +343,56 @@ void gcnet_run(void)
 	state_nn[14] = nn_rpm_obs[2];
 	state_nn[15] = nn_rpm_obs[3];
 
-	state_nn[16] = Mx_measured - Mx_modeled;     //  9.00431696e-03;
-	state_nn[17] = My_measured - My_modeled;     // -8.49446691e-03;
-	state_nn[18] = Mz_measured - Mz_modeled;     // -2.41474717e-03;
-	state_nn[19] = 0.0; //az_measured - az_modeled;
+	state_nn[16] = Mx_measured - Mx_modeled;
+	state_nn[17] = My_measured - My_modeled;
+	state_nn[18] = Mz_measured - Mz_modeled;
+	// state_nn[19] = 0.0; //az_measured - az_modeled;
 	
 	// calcuate neural network output
 	nn_control(state_nn, control_nn);
 }
+
+
+/*
+void external_vision_update(uint8_t *buf)
+{
+  if (DL_EXTERNAL_VISION_ac_id(buf) != AC_ID) { return; } // not for this aircraft
+  
+  uint32_t stamp = get_sys_time_usec();
+  
+  float enu_x = DL_EXTERNAL_VISION_enu_x(buf);
+  float enu_y = DL_EXTERNAL_VISION_enu_y(buf);
+  float enu_z = DL_EXTERNAL_VISION_enu_z(buf);
+
+  float quat_i = DL_EXTERNAL_VISION_quat_i(buf);
+  float quat_x = DL_EXTERNAL_VISION_quat_x(buf);
+  float quat_y = DL_EXTERNAL_VISION_quat_y(buf);
+  float quat_z = DL_EXTERNAL_VISION_quat_z(buf);
+
+  struct FloatQuat orient;
+  struct FloatEulers orient_eulers;
+
+  orient.qi = quat_i;
+  orient.qx = quat_y;   //north
+  orient.qy = -quat_x;  //east
+  orient.qz = -quat_z;  //down
+
+  float_eulers_of_quat(&orient_eulers, &orient);
+  orient_eulers.psi += 90.0/57.6 - 33/57.6;
+
+  ev_pos[0] = enu_y;
+  ev_pos[1] = enu_x;
+  ev_pos[2] = -enu_z;
+  ev_att[0] = orient_eulers.phi;
+  ev_att[1] = orient_eulers.theta;
+  ev_att[2] = orient_eulers.psi;
+
+  //printf("EV UPDATE \n");
+  //printf("time = %d ", stamp);
+  //printf("pos = %f, %f, %f ", enu_y, enu_x, -enu_z);
+  //printf("att = %f, %f, %f \n", orient_eulers.phi*57.297795f, orient_eulers.theta*57.297795f, orient_eulers.psi*57.297795f);
+}
+*/
+
+
+

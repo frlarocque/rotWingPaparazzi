@@ -34,9 +34,9 @@
     <module name="gcnet"/>
     <module name="logger_file"/>
 
-    <!--module name="logger_file">
+    <module name="logger_file">
       <define name="FILE_LOGGER_PATH" value="/data/ftp/internal_000"/>
-    </module-->
+    </module>
 
     <!--module name="bebop_cam"/-->
 
@@ -55,10 +55,10 @@
     <define name="NO_GPS_LOST_WITH_DATALINK_TIME" value="20"/>
     <define name="NO_GPS_LOST_WITH_RC_VALID" value="TRUE"/>
 
-    <define name="INS_EKF2_FUSION_MODE" value="MASK_USE_GPS | MASK_USE_GPSYAW"/>
-    <define name="INS_EKF2_VDIST_SENSOR_TYPE" value="VDIST_SENSOR_GPS"/>
+    <define name="INS_EKF2_FUSION_MODE" value="MASK_USE_EVPOS | MASK_USE_EVYAW"/>
+    <define name="INS_EKF2_VDIST_SENSOR_TYPE" value="VDIST_SENSOR_EV"/>
     <!--define name="INS_EKF2_GPS_CHECK_MASK" value="0"/-->
-    <define name="INS_EKF2_GPS_COURSE_YAW" value="TRUE"/>
+    <!--define name="INS_EKF2_GPS_COURSE_YAW" value="TRUE"/-->
   </section>
 
   <commands>
@@ -110,26 +110,12 @@
     <define name="MAG_Y_SENS" value="7.131682407041831" integer="16"/>
     <define name="MAG_Z_SENS" value="7.214226805168206" integer="16"/>
 
-    <define name="ACCEL_X_NEUTRAL" value="116"/>
+    <define name="ACCEL_X_NEUTRAL" value="111"/>
     <define name="ACCEL_Y_NEUTRAL" value="75"/>
-    <define name="ACCEL_Z_NEUTRAL" value="694"/>
-    <define name="ACCEL_X_SENS" value="2.4417899760272532" integer="16"/>
-    <define name="ACCEL_Y_SENS" value="2.432879251493936" integer="16"/>
-    <define name="ACCEL_Z_SENS" value="2.4009838154828276" integer="16"/>
-
-    <!--define name="ACCEL_X_NEUTRAL" value="119"/-->
-    <!--define name="ACCEL_Y_NEUTRAL" value="69"/-->
-    <!--define name="ACCEL_Z_NEUTRAL" value="1021"/-->
-    <!--define name="ACCEL_X_SENS" value="2.434160562834384" integer="16"/-->
-    <!--define name="ACCEL_Y_SENS" value="2.420544363431848" integer="16"/-->
-    <!--define name="ACCEL_Z_SENS" value="2.6063250801805595" integer="16"/-->
-
-    <!--define name="ACCEL_X_NEUTRAL" value="59"/-->
-    <!--define name="ACCEL_Y_NEUTRAL" value="36"/-->
-    <!--define name="ACCEL_Z_NEUTRAL" value="311"/-->
-    <!--define name="ACCEL_X_SENS" value="4.886886412702753" integer="16"/-->
-    <!--define name="ACCEL_Y_SENS" value="4.8663850823745545" integer="16"/-->
-    <!--define name="ACCEL_Z_SENS" value="4.806189111951513" integer="16"/-->
+    <define name="ACCEL_Z_NEUTRAL" value="687"/>
+    <define name="ACCEL_X_SENS" value="2.4433578653919583" integer="16"/>
+    <define name="ACCEL_Y_SENS" value="2.431976622057375" integer="16"/>
+    <define name="ACCEL_Z_SENS" value="2.4027638995841896" integer="16"/>
 
     <!-- Magneto current calibration -->
     <define name="MAG_X_CURRENT_COEF" value="0.0"/>

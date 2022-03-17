@@ -201,6 +201,9 @@ struct gps_message gps_msg = {};
 struct flow_message flow_msg = {};
 struct ext_vision_message ev_msg = {};
 
+float ev_pos[3] = {0.f,0.f,0.f};
+float ev_att[3] = {0.f,0.f,0.f};
+
 /* All ABI callbacks */
 static void agl_cb(uint8_t sender_id, uint32_t stamp, float distance);
 static void baro_cb(uint8_t sender_id, uint32_t stamp, float pressure);
@@ -617,16 +620,14 @@ static void ins_ekf2_publish_attitude(uint32_t stamp)
 
 /* Update INS based on Baro information (BYPASSED BY DATA FROM GPS MESSAGE)*/
 static void baro_cb(uint8_t __attribute__((unused)) sender_id, uint32_t stamp, float pressure)
-{
-  float height_amsl_m = (float) gps_msg.alt * 1e-3f;
-  
+{  
   // Calculate the air density
-  // float rho = pprz_isa_density_of_pressure(pressure, 20.0f); // TODO: add temperature compensation now set to 20 degree celcius
+  float rho = pprz_isa_density_of_pressure(pressure, 20.0f); // TODO: add temperature compensation now set to 20 degree celcius
 
-  // ekf.set_air_density(rho);
+  ekf.set_air_density(rho);
 
   // Calculate the height above mean sea level based on pressure
-  // float height_amsl_m = pprz_isa_height_of_pressure_full(pressure, 101325.0); //101325.0 defined as PPRZ_ISA_SEA_LEVEL_PRESSURE in pprz_isa.h
+  float height_amsl_m = pprz_isa_height_of_pressure_full(pressure, 101325.0); //101325.0 defined as PPRZ_ISA_SEA_LEVEL_PRESSURE in pprz_isa.h
   
   ekf.setBaroData(stamp, height_amsl_m);
 }
@@ -788,6 +789,13 @@ void external_vision_update(uint8_t *buf)
   ev_msg.posErr = 0.01;
   ev_msg.hgtErr = 0.01;
   ev_msg.angErr = 0.01;
+
+  ev_pos[0] = ev_msg.posNED(0);
+  ev_pos[1] = ev_msg.posNED(1);
+  ev_pos[2] = ev_msg.posNED(2);
+  ev_att[0] = orient_eulers.phi;
+  ev_att[1] = orient_eulers.theta;
+  ev_att[2] = orient_eulers.psi;
 
   ekf.setExtVisionData(stamp, &ev_msg);
 

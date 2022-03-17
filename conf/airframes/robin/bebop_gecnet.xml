@@ -36,6 +36,7 @@
 
     <module name="logger_file"/>
     <module name="gcnet"/>
+    <module name="ekf_robin"/>
 
   </firmware>
 
@@ -94,12 +95,23 @@
     <define name="MAG_Y_SENS" value="7.131682407041831" integer="16"/>
     <define name="MAG_Z_SENS" value="7.214226805168206" integer="16"/>
 
+<!-- OLD
     <define name="ACCEL_X_NEUTRAL" value="59"/>
     <define name="ACCEL_Y_NEUTRAL" value="36"/>
     <define name="ACCEL_Z_NEUTRAL" value="311"/>
     <define name="ACCEL_X_SENS" value="4.886886412702753" integer="16"/>
     <define name="ACCEL_Y_SENS" value="4.8663850823745545" integer="16"/>
     <define name="ACCEL_Z_SENS" value="4.806189111951513" integer="16"/>
+-->
+
+<!-- NEWEST CALIBRATION -->
+    <define name="ACCEL_X_NEUTRAL" value="111"/>
+    <define name="ACCEL_Y_NEUTRAL" value="75"/>
+    <define name="ACCEL_Z_NEUTRAL" value="687"/>
+    <define name="ACCEL_X_SENS" value="2.4433578653919583" integer="16"/>
+    <define name="ACCEL_Y_SENS" value="2.431976622057375" integer="16"/>
+    <define name="ACCEL_Z_SENS" value="2.4027638995841896" integer="16"/>
+
 
     <define name="BODY_TO_IMU_PHI" value="0." unit="deg"/>
     <define name="BODY_TO_IMU_THETA" value="0." unit="deg"/>

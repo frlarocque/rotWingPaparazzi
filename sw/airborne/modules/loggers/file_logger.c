@@ -44,13 +44,15 @@
 #endif
 
 #include "boards/bebop/actuators.h"
-#include "subsystems/abi.h"
-#include "subsystems/actuators/motor_mixing.h"
-#include "subsystems/imu.h"
-#include "subsystems/gps.h"
+#include "core/abi.h"
+#include "actuators/motor_mixing.h"
+#include "imu/imu.h"
+#include "gps/gps.h"
+//#include "ins/ins_ekf2.h"
 
 // Add neural network library 
 #include "modules/gcnet/gcnet_main.h"
+#include "modules/ekf_robin/ekf_robin.h"
 
 // For autopilot mode
 #include "firmwares/rotorcraft/navigation.h"
@@ -68,7 +70,7 @@
 /** The file pointer */
 static FILE *file_logger = NULL;
 
-/** ABI Messaging */
+/** ABI Messaging
 uint16_t rpm_obs[4] = {0,0,0,0};
 uint16_t rpm_ref[4] = {0,0,0,0};
 static abi_event rpm_read_ev;
@@ -84,6 +86,7 @@ static void rpm_read_cb(uint8_t __attribute__((unused)) sender_id, uint16_t *rpm
    rpm_ref[2] = rpm_ref_read[2];
    rpm_ref[3] = rpm_ref_read[3];
 }
+**/
 
 /** Used for GPS */
 struct LtpDef_i ltp_def;
@@ -118,6 +121,11 @@ static void file_logger_write_header(FILE *file) {
   fprintf(file, "nn_in_1,nn_in_2,nn_in_3,nn_in_4,nn_in_5,nn_in_6,nn_in_7,nn_in_8,nn_in_9,nn_in_10,nn_in_11,nn_in_12,nn_in_13,nn_in_14,nn_in_15,nn_in_16,nn_in_17,nn_in_18,nn_in_19,");
   fprintf(file, "Mx_measured,My_measured,Mz_measured,az_measured,");
   fprintf(file, "Mx_modeled,My_modeled,Mz_modeled,az_modeled,");
+  fprintf(file, "ev_pos_x,ev_pos_y,ev_pos_z,");
+  fprintf(file, "ev_att_phi,ev_att_theta,ev_att_psi,");
+  fprintf(file, "ekf_X1,ekf_X2,ekf_X3,ekf_X4,ekf_X5,ekf_X6,ekf_X7,ekf_X8,ekf_X9,ekf_X10,ekf_X11,ekf_X12,ekf_X13,ekf_X14,ekf_X15,");
+  fprintf(file, "ekf_U1,ekf_U2,ekf_U3,ekf_U4,ekf_U5,ekf_U6,");
+  fprintf(file, "ekf_Z1,ekf_Z2,ekf_Z3,ekf_Z4,");
 #ifdef COMMAND_THRUST
   fprintf(file, "cmd_thrust,cmd_roll,cmd_pitch,cmd_yaw\n");
 #else
@@ -168,8 +176,8 @@ static void file_logger_write_row(FILE *file) {
   fprintf(file, "%f,%f,%f,", att->phi, att->theta, att->psi);
   fprintf(file, "%f,%f,%f,", rates->p, rates->q, rates->r);
   fprintf(file, "%f,%f,%f,", RATE_FLOAT_OF_BFP(imu.gyro.p), RATE_FLOAT_OF_BFP(imu.gyro.q), RATE_FLOAT_OF_BFP(imu.gyro.r));
-  fprintf(file, "%d,%d,%d,%d,",rpm_obs[0],rpm_obs[1],rpm_obs[2],rpm_obs[3]);
-  fprintf(file, "%d,%d,%d,%d,",rpm_ref[0],rpm_ref[1],rpm_ref[2],rpm_ref[3]);
+  fprintf(file, "%d,%d,%d,%d,",actuators_bebop.rpm_obs[0],actuators_bebop.rpm_obs[1],actuators_bebop.rpm_obs[2],actuators_bebop.rpm_obs[3]);
+  fprintf(file, "%d,%d,%d,%d,",actuators_bebop.rpm_ref[0],actuators_bebop.rpm_ref[1],actuators_bebop.rpm_ref[2],actuators_bebop.rpm_ref[3]);
   fprintf(file, "%d,%d,%d,%d,", motor_mixing.commands[0], motor_mixing.commands[1], motor_mixing.commands[2], motor_mixing.commands[3]);
   fprintf(file, "%d,", (autopilot_get_mode()==AP_MODE_ATTITUDE_DIRECT)?(1):(0));
   fprintf(file, "%f,%f,%f,", waypoint_ned.x, waypoint_ned.y, waypoint_ned.z);
@@ -177,6 +185,11 @@ static void file_logger_write_row(FILE *file) {
   fprintf(file, "%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,",state_nn[0], state_nn[1], state_nn[2], state_nn[3], state_nn[4], state_nn[5], state_nn[6], state_nn[7], state_nn[8], state_nn[9], state_nn[10], state_nn[11], state_nn[12], state_nn[13], state_nn[14], state_nn[15], state_nn[16], state_nn[17], state_nn[18]);
   fprintf(file, "%f,%f,%f,%f,", Mx_measured, My_measured, Mz_measured, az_measured);
   fprintf(file, "%f,%f,%f,%f,", Mx_modeled, My_modeled, Mz_modeled, az_modeled);
+  fprintf(file, "%f,%f,%f,", ev_pos[0], ev_pos[1], ev_pos[2]);
+  fprintf(file, "%f,%f,%f,", ev_att[0], ev_att[1], ev_att[2]);
+  fprintf(file, "%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,", ekf_X[0], ekf_X[1], ekf_X[2], ekf_X[3], ekf_X[4], ekf_X[5], ekf_X[6], ekf_X[7], ekf_X[8], ekf_X[9], ekf_X[10], ekf_X[11], ekf_X[12], ekf_X[13], ekf_X[14]);
+  fprintf(file, "%f,%f,%f,%f,%f,%f,", ekf_U[0], ekf_U[1], ekf_U[2], ekf_U[3], ekf_U[4], ekf_U[5]);
+  fprintf(file, "%f,%f,%f,%f,", ekf_Z[0], ekf_Z[1], ekf_Z[2], ekf_Z[3]);
   
 #ifdef COMMAND_THRUST
   fprintf(file, "%d,%d,%d,%d\n",
@@ -192,7 +205,7 @@ static void file_logger_write_row(FILE *file) {
 void file_logger_start(void)
 {
   // ABI messaging for reading rpm
-  AbiBindMsgRPM(RPM_SENSOR_ID, &rpm_read_ev, rpm_read_cb);
+  // AbiBindMsgRPM(RPM_SENSOR_ID, &rpm_read_ev, rpm_read_cb);
 
   // GPS initialization
   struct LlaCoor_i llh_nav0; /* Height above the ellipsoid */
