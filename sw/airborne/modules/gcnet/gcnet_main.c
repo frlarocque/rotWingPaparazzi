@@ -79,8 +79,11 @@ float az_modeled;
 
 float t0;
 float t1;
+float t0_;
+float t1_;
 
 bool active = false;
+bool waiting = false;
 float dist_to_waypoint = 10;
 float psi_ref = 0;
 
@@ -95,28 +98,34 @@ Butterworth2LowPass filter_w1;
 Butterworth2LowPass filter_w2;
 Butterworth2LowPass filter_w3;
 Butterworth2LowPass filter_w4;
+Butterworth2LowPass filter_vx;
+Butterworth2LowPass filter_vy;
 Butterworth2LowPass filter_az;
 
 // parameters
 float Ixx = 0.00090600;
 float Iyy = 0.00124200;
 float Izz = 0.00205400;
-float k_p  = 1.83796309e-09;
-float k_q  = 1.30258126e-09;
-float k_r1 = 2.24736889e-10;
-float k_r2 = 3.51480672e-07;
-float k_rr = 1.95277752e-03;
-float k_omega = 4.33399301e-08;
-float tau = 0.028;
+float k_p  = 1.41193310e-09; //1.83796309e-09;
+float k_pv = -7.97101848e-03;
+float k_q  = 1.21601884e-09; //1.30258126e-09;
+float k_qv = 1.29263739e-02;
+float k_r1 = 2.57035545e-06; //2.24736889e-10;
+float k_r2 = 4.10923364e-07; //3.51480672e-07;
+float k_rr = 8.12932607e-04; //1.95277752e-03;
+float k_omega = 4.36301076e-08; //4.33399301e-08;
+float tau = 0.03; //0.028;
 
 // sample_time = 1/sample_frequency
 float sample_time = 1.0/512.0;
+
+int count = 0;
 
 
 void gcnet_init(void)
 {
 	// keep track of time
-	// t0 = get_sys_time_float();
+	//t0 = get_sys_time_float();
 
 	// ABI messaging for reading rpm
 	AbiBindMsgRPM(RPM_SENSOR_ID, &rpm_read_ev, rpm_read_cb);
@@ -131,6 +140,8 @@ void gcnet_init(void)
 	init_butterworth_2_low_pass(&filter_w2, tau_, sample_time, 0.0);
 	init_butterworth_2_low_pass(&filter_w3, tau_, sample_time, 0.0);
 	init_butterworth_2_low_pass(&filter_w4, tau_, sample_time, 0.0);
+	init_butterworth_2_low_pass(&filter_vx, tau_, sample_time, 0.0);
+	init_butterworth_2_low_pass(&filter_vy, tau_, sample_time, 0.0);
 	init_butterworth_2_low_pass(&filter_az, tau_, sample_time, 0.0);
 }
 	
@@ -174,6 +185,9 @@ void gcnet_run(void)
 	float_quat_of_eulers(&quat, &att);
 
 	struct FloatRates  *rates = stateGetBodyRates_f();
+	float unbiased_p = rates->p - ekf_X[12];
+	float unbiased_q = rates->q - ekf_X[13];
+	float unbiased_r = rates->r - ekf_X[14];
 	
 	//struct Int32Vect3 *body_accel_i;
 	//body_accel_i = stateGetAccelBody_i();
@@ -213,6 +227,8 @@ void gcnet_run(void)
 	update_butterworth_2_low_pass(&filter_w2, nn_rpm_obs[1]);
 	update_butterworth_2_low_pass(&filter_w3, nn_rpm_obs[2]);
 	update_butterworth_2_low_pass(&filter_w4, nn_rpm_obs[3]);
+	update_butterworth_2_low_pass(&filter_vx, vel_body.x);
+	update_butterworth_2_low_pass(&filter_vy, vel_body.y);
 	update_butterworth_2_low_pass(&filter_az, acc_body.z);
 
 	// calculate moments and forces
@@ -227,19 +243,47 @@ void gcnet_run(void)
 
 	float w1 = filter_w1.o[0], w2 = filter_w2.o[0], w3 = filter_w3.o[0], w4 = filter_w4.o[0];
 	float p_ = filter_p.o[0], q_ = filter_q.o[0], r_ = filter_r.o[0];
+	float vbx = filter_vx.o[0], vby = filter_vy.o[0];
 
 	Mx_measured = Ixx*d_p - q_*r_*(Iyy-Izz);
 	My_measured = Iyy*d_q - p_*r_*(Izz-Ixx);
 	Mz_measured = Izz*d_r - p_*q_*(Ixx-Iyy);
-	az_measured = filter_az.o[0];
+	//az_measured = filter_az.o[0];
 
-	Mx_modeled = k_p*( w1*w1 - w2*w2 - w3*w3 + w4*w4);
-	My_modeled = k_q*( w1*w1 + w2*w2 - w3*w3 - w4*w4);
-	Mz_modeled = k_r1*(-w1*w1 + w2*w2 - w3*w3 + w4*w4) + k_r2*(-d_w1 + d_w2 - d_w3 + d_w4) - k_rr*r_;
-	az_modeled = -k_omega*(w1*w1 + w2*w2 + w3*w3 + w4*w4);
+	Mx_modeled = k_p*( w1*w1 - w2*w2 - w3*w3 + w4*w4) + k_pv*vby;
+	My_modeled = k_q*( w1*w1 + w2*w2 - w3*w3 - w4*w4) + k_qv*vbx;
+	Mz_modeled = k_r1*(-w1 + w2 - w3 + w4) + k_r2*(-d_w1 + d_w2 - d_w3 + d_w4) - k_rr*r_;
+	//az_modeled = -k_omega*(w1*w1 + w2*w2 + w3*w3 + w4*w4);
 
-	
-
+/*
+	//TEMPORARY FOR TEST
+	psi_ref = atan2(waypoints[WP_WP2].enu_f.x-waypoints[WP_WP1].enu_f.x, waypoints[WP_WP2].enu_f.y-waypoints[WP_WP1].enu_f.y);
+	dist_to_waypoint = sqrtf(delta_pos_ned.x*delta_pos_ned.x + delta_pos_ned.y*delta_pos_ned.y + delta_pos_ned.z*delta_pos_ned.z);
+	//dist_to_waypoint < .3
+	if (active && count<40) {
+		if (waiting == false) {
+			waiting = true;
+			t0_ = get_sys_time_float();
+		}
+		t1_ = get_sys_time_float();
+		if (t1_-t0_ > 4) {
+			if (WP_EQUALS(WP_GOAL, WP_WP1)) {
+				waypoint_copy(WP_GOAL, WP_WP2);
+			}
+			else if (WP_EQUALS(WP_GOAL, WP_WP2)) {
+				waypoint_copy(WP_GOAL, WP_WP3);
+			}
+			else if (WP_EQUALS(WP_GOAL, WP_WP3)) {
+				waypoint_copy(WP_GOAL, WP_WP4);
+			}
+			else if (WP_EQUALS(WP_GOAL, WP_WP4)) {
+				waypoint_copy(WP_GOAL, WP_WP1);
+			}
+			waiting=false;
+			count += 1;
+		}
+	}
+*/
 /*
 	// set goal to next waypoint once waypoint is reached (within 0.3 meter)
 	if (dist_to_waypoint < 0.3 && dist_to_waypoint < sqrtf(delta_pos_ned.x*delta_pos_ned.x + delta_pos_ned.y*delta_pos_ned.y + delta_pos_ned.z*delta_pos_ned.z) && autopilot_get_mode() == AP_MODE_ATTITUDE_DIRECT) {
@@ -266,6 +310,7 @@ void gcnet_run(void)
 	};
 	dist_to_waypoint = sqrtf(delta_pos_ned2.x*delta_pos_ned2.x + delta_pos_ned2.y*delta_pos_ned2.y + delta_pos_ned2.z*delta_pos_ned2.z);
 */
+
 	if (autopilot_get_mode() == AP_MODE_ATTITUDE_DIRECT) {
 		if (WP_EQUALS(WP_GOAL, WP_WP1)) {
 			psi_ref = atan2(waypoints[WP_WP1].enu_f.x-waypoints[WP_WP4].enu_f.x, waypoints[WP_WP1].enu_f.y-waypoints[WP_WP4].enu_f.y);
@@ -273,7 +318,7 @@ void gcnet_run(void)
 			// set next waypoint once drone passes the plane perpendicular to the waypoint (psi_ref + pi/4 direction)
 			float normal_x = cos(psi_ref + M_PI/4);
 			float normal_y = sin(psi_ref + M_PI/4);		
-			if (-delta_pos_ned.x*normal_x - delta_pos_ned.y*normal_y > -0.5) {
+			if (-delta_pos_ned.x*normal_x - delta_pos_ned.y*normal_y > -1.2) {
 				waypoint_copy(WP_GOAL, WP_WP2);
 			}
 		}
@@ -283,7 +328,7 @@ void gcnet_run(void)
 			// set next waypoint once drone passes the plane perpendicular to the waypoint (psi_ref + pi/4 direction)
 			float normal_x = cos(psi_ref + M_PI/4);
 			float normal_y = sin(psi_ref + M_PI/4);		
-			if (-delta_pos_ned.x*normal_x - delta_pos_ned.y*normal_y > -0.5) {
+			if (-delta_pos_ned.x*normal_x - delta_pos_ned.y*normal_y > -1.2) {
 				waypoint_copy(WP_GOAL, WP_WP3);
 			}
 		}
@@ -293,7 +338,7 @@ void gcnet_run(void)
 			// set next waypoint once drone passes the plane perpendicular to the waypoint (psi_ref + pi/4 direction)
 			float normal_x = cos(psi_ref + M_PI/4);
 			float normal_y = sin(psi_ref + M_PI/4);		
-			if (-delta_pos_ned.x*normal_x - delta_pos_ned.y*normal_y > -0.5) {
+			if (-delta_pos_ned.x*normal_x - delta_pos_ned.y*normal_y > -1.2) {
 				waypoint_copy(WP_GOAL, WP_WP4);
 			}
 			
@@ -304,12 +349,13 @@ void gcnet_run(void)
 			// set next waypoint once drone passes the plane perpendicular to the waypoint (psi_ref + pi/4 direction)
 			float normal_x = cos(psi_ref + M_PI/4);
 			float normal_y = sin(psi_ref + M_PI/4);		
-			if (-delta_pos_ned.x*normal_x - delta_pos_ned.y*normal_y > -0.5) {
+			if (-delta_pos_ned.x*normal_x - delta_pos_ned.y*normal_y > -1.2) {
 				waypoint_copy(WP_GOAL, WP_WP1);
 			}
 			
 		}
 	}
+
 
 	state_nn[8] = att.psi-psi_ref;
 	
@@ -334,9 +380,9 @@ void gcnet_run(void)
 	state_nn[7] = att.theta;
 	//state_nn[8] = att.psi;
 
-	state_nn[9] = rates->p;
-	state_nn[10] = rates->q;
-	state_nn[11] = rates->r;
+	state_nn[9] = unbiased_p;
+	state_nn[10] = unbiased_q;
+	state_nn[11] = unbiased_r;
 
 	state_nn[12] = nn_rpm_obs[0];
 	state_nn[13] = nn_rpm_obs[1];
@@ -346,7 +392,6 @@ void gcnet_run(void)
 	state_nn[16] = Mx_measured - Mx_modeled;
 	state_nn[17] = My_measured - My_modeled;
 	state_nn[18] = Mz_measured - Mz_modeled;
-	// state_nn[19] = 0.0; //az_measured - az_modeled;
 	
 	// calcuate neural network output
 	nn_control(state_nn, control_nn);

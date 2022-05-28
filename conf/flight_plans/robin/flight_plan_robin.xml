@@ -29,14 +29,20 @@ x = cos(33.0/57.6) * x - sin(33.0/57.6) * y;
 y = sin(33.0/57.6) * x + cos(33.0/57.6) * y;
 -->
 
-<!-- 4x4 square alinged with cyberzoo
+<!-- 4x4 square alinged with cyberzoo 
     <waypoint name="WP1" x="-0.59647635" y="-2.764817528" alt="1."/>
     <waypoint name="WP2" x="-2.764817528"  y="0.59647635" alt="1."/>
     <waypoint name="WP3" x="0.59647635"  y="2.764817528" alt="1."/>
     <waypoint name="WP4" x="2.764817528"   y="-0.59647635" alt="1."/>
 -->
+<!--
+    <waypoint name="WP1" x="-0.3" y="-1.4" alt="1."/>
+    <waypoint name="WP2" x="-1.4"  y="0.3" alt="1."/>
+    <waypoint name="WP3" x="0.3"  y="1.4" alt="1."/>
+    <waypoint name="WP4" x="1.4"   y="-0.3" alt="1."/>
+-->
 
-<!-- 3x4 square alinged with cyberzoo-->
+<!-- 3x4 square alinged with cyberzoo -->
     <waypoint name="WP1" x="-0.1763146154676516" y="-2.4937748808528193" alt="1."/>
     <waypoint name="WP2" x="-2.3446557932877643" y="0.8675189974877349" alt="1."/>
     <waypoint name="WP3" x="0.1763146154676516" y="2.4937748808528193" alt="1."/>
@@ -178,19 +184,19 @@ y = sin(33.0/57.6) * x + cos(33.0/57.6) * y;
       <stay wp="GOAL"/>
     </block>
     <block name="GoToWP2">
-      <call_once fun="nav_set_heading_deg(0)"/>
+      <call_once fun="nav_set_heading_deg(-33)"/>
       <call_once fun="NavCopyWaypoint(WP_GOAL, WP_WP2)"/>
       <go wp="GOAL"/>
       <stay wp="GOAL"/>
     </block>
     <block name="GoToWP3">
-      <call_once fun="nav_set_heading_deg(0)"/>
+      <call_once fun="nav_set_heading_deg(-33)"/>
       <call_once fun="NavCopyWaypoint(WP_GOAL, WP_WP3)"/>
       <go wp="GOAL"/>
       <stay wp="GOAL"/>
     </block>
     <block name="GoToWP4">
-      <call_once fun="nav_set_heading_deg(0)"/>
+      <call_once fun="nav_set_heading_deg(-33)"/>
       <call_once fun="NavCopyWaypoint(WP_GOAL, WP_WP4)"/>
       <go wp="GOAL"/>
       <stay wp="GOAL"/>

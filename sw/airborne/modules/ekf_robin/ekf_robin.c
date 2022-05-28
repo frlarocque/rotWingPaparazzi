@@ -44,9 +44,9 @@ void ekf_init(void)
 	printf("ekf init");
 	float X0[EKF_NUM_STATES] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 	float Pdiag[EKF_NUM_STATES] = {1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.};
-	float Qdiag[EKF_NUM_INPUTS] = {10., 1., 50., 0.01, 0.1, 0.001};
+	float Qdiag[EKF_NUM_INPUTS] = {0.5, 0.5, 0.5, 0.01, 0.01, 0.01};
 
-	float Rdiag[EKF_NUM_OUTPUTS] = {0.0001, 0.0001, 0.0001, 0.1, 0.1, 0.1};
+	float Rdiag[EKF_NUM_OUTPUTS] = {0.001, 0.001, 0.001, 0.1, 0.1, 0.1};
 
 	MAKE_MATRIX_PTR(ekf_P_, ekf_P, EKF_NUM_STATES);
 	MAKE_MATRIX_PTR(ekf_Q_, ekf_Q, EKF_NUM_INPUTS);
