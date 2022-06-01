@@ -224,11 +224,11 @@
 
     <define name="PID_P_GAIN_POS_X_TILT" value="0.94"/>
     <define name="PID_I_GAIN_POS_X_TILT" value="0.01"/>
-    <define name="PID_D_GAIN_POS_X_TILT" value="0.31"/>
+    <define name="PID_D_GAIN_POS_X_TILT" value="0.39"/>
 
     <define name="PID_P_GAIN_POS_Y_TILT" value="0.94"/>
     <define name="PID_I_GAIN_POS_Y_TILT" value="0.01"/>
-    <define name="PID_D_GAIN_POS_Y_TILT" value="0.31"/>
+    <define name="PID_D_GAIN_POS_Y_TILT" value="0.39"/>
 
 <!--    Modified the 22/11/2021: the dynamics must be the same since is computed before the body projection!!-->
     <define name="PID_P_GAIN_POS_X_ATT" value="0.3"/>
@@ -503,7 +503,7 @@
     <define name="REF_ERR_P" value="60.0"/>
     <define name="REF_ERR_Q" value="60.0"/>
     <define name="REF_ERR_R" value="44.0"/>
-    <define name="REF_RATE_P" value="6.5"/>
+    <define name="REF_RATE_P" value="5.4"/>
     <define name="REF_RATE_Q" value="6.5"/>
     <define name="REF_RATE_R" value="5.4"/>
 

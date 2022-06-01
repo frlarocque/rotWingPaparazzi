@@ -87,7 +87,7 @@ float psi_order_motor = 0;
 bool INDI_engaged = 0, FAILSAFE_engaged = 0, PID_engaged = 0;
 
 // PID and general settings from slider
-int deadband_stick_yaw = 500, deadband_stick_throttle = 2500;
+int deadband_stick_yaw = 100, deadband_stick_throttle = 100;
 float stick_gain_yaw = 0.01, stick_gain_throttle = 0.03; //  Stick to yaw and throttle gain (for the integral part)
 bool yaw_with_motors_PID = 0, position_with_attitude = 0, manual_motor_stick = 1, activate_tilting_az_PID = 0;
 bool activate_tilting_el_PID = 0, yaw_with_tilting_PID = 1, mode_1_control = 0;
@@ -509,12 +509,11 @@ void overactuated_mixing_run()
     //Assign variables
     assign_variables();
 
-    pos_setpoint[0] = ox_point;
-    pos_setpoint[1] = oy_point;
-    pos_setpoint[2] = - z_test;
+//    pos_setpoint[0] = ox_point;
+//    pos_setpoint[1] = oy_point;
+//    pos_setpoint[2] = - z_test;
     manual_theta_value = 0;
     manual_phi_value = 0;
-    euler_setpoint[2] = 0;
 
     if(start_auto){
         if(bool_start_auto_on == 0) {
@@ -610,7 +609,8 @@ void overactuated_mixing_run()
             manual_phi_value = 0;
             euler_setpoint[2] = 0;
         }
-    } else{
+    }
+    else{
         bool_start_auto_on = 0;
     }
 
@@ -710,13 +710,49 @@ void overactuated_mixing_run()
 //    if(1)
     {
         //INIT AND BOOLEAN RESET
-        if(PID_engaged == 0 ){
+        if (PID_engaged == 0) {
             PID_engaged = 1;
             INDI_engaged = 0;
             FAILSAFE_engaged = 0;
             for (int i = 0; i < 3; i++) {
                 euler_error_integrated[i] = 0;
                 pos_error_integrated[i] = 0;
+            }
+            pos_setpoint[0] = pos_vect[0];
+            pos_setpoint[1] = pos_vect[1];
+            pos_setpoint[2] = - pos_vect[2];
+            euler_setpoint[2] = euler_vect[2];
+        }
+
+        float lateral_position_increment = 0;
+        float forward_position_increment = 0;
+        //Compute position setpoints through joystick integration:
+        if (abs(radio_control.values[RADIO_PITCH]) > deadband_stick_throttle){
+            forward_position_increment = - stick_gain_throttle * radio_control.values[RADIO_PITCH] * .00002;
+        }
+        if (abs(radio_control.values[RADIO_ROLL]) > deadband_stick_throttle){
+            lateral_position_increment = stick_gain_throttle * radio_control.values[RADIO_ROLL] * .00002;
+        }
+        pos_setpoint[0] += cos(euler_vect[2]) * forward_position_increment - sin(euler_vect[2]) * lateral_position_increment;
+        pos_setpoint[1] += cos(euler_vect[2]) * lateral_position_increment + sin(euler_vect[2]) * forward_position_increment;
+
+        manual_phi_value = max_value_error.phi * radio_control.values[RADIO_AUX2] / 9600;
+        manual_theta_value = max_value_error.theta * radio_control.values[RADIO_AUX3] / 9600;
+
+        if( abs(radio_control.values[RADIO_THROTTLE] - 4800) > 500){
+            pos_setpoint[2]  = pos_setpoint[2]  - stick_gain_throttle * (radio_control.values[RADIO_THROTTLE] - 4800) * .00001;
+//            Bound(pos_setpoint[2] ,-1000,-1000);
+        }
+
+        if (abs(radio_control.values[RADIO_YAW]) > deadband_stick_yaw ) {
+            euler_setpoint[2] =
+                    euler_setpoint[2] + stick_gain_yaw * radio_control.values[RADIO_YAW] * M_PI / 180 * .001;
+            //Correct the setpoint in order to always be within -pi and pi
+            if (euler_setpoint[2] > M_PI) {
+                euler_setpoint[2] -= 2 * M_PI;
+            }
+            else if (euler_setpoint[2] < -M_PI) {
+                euler_setpoint[2] += 2 * M_PI;
             }
         }
 
@@ -830,8 +866,8 @@ void overactuated_mixing_run()
     }
 
     /// Case of INDI control mode with external am7 function:
-    if(radio_control.values[RADIO_MODE] > 500 )
-//    if(1)
+//    if(radio_control.values[RADIO_MODE] > 500 )
+    if(0)
     {
 
         //INIT AND BOOLEAN RESET
