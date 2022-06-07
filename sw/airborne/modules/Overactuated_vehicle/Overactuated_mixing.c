@@ -527,15 +527,10 @@ void assign_variables(void){
     }
 
     //Computation of the matrix to pass from euler to body rates
-    R_matrix[0][0]=1;
-    R_matrix[1][0]=0;
-    R_matrix[2][0]=-sin(euler_vect[1]);
-    R_matrix[0][1]=0;
-    R_matrix[1][1]=cos(euler_vect[0]);
-    R_matrix[2][1]=sin(euler_vect[1]) * cos(euler_vect[1]);
-    R_matrix[0][2]=0;
-    R_matrix[1][2]=-sin(euler_vect[0]);
-    R_matrix[2][2]=cos(euler_vect[0]) * cos(euler_vect[1]);
+    //Computation of the matrix to pass from euler to body rates
+    R_matrix[0][0]=1; R_matrix[0][1]=0; R_matrix[0][2]=0;
+    R_matrix[1][0]=0; R_matrix[1][1]=cos(euler_vect[0]); R_matrix[1][2]=-sin(euler_vect[0]);
+    R_matrix[2][0]=-sin(euler_vect[1]); R_matrix[2][1]=sin(euler_vect[0]) * cos(euler_vect[1]); R_matrix[2][2]=cos(euler_vect[0]) * cos(euler_vect[1]);
 
 
     //Initialize actuator commands
