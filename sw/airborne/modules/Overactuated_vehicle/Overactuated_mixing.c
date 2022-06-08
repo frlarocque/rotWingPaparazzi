@@ -706,7 +706,7 @@ void overactuated_mixing_run()
     }
 
     /// Case of auto PID control
-    if(radio_control.values[RADIO_MODE] < 500 && radio_control.values[RADIO_MODE] > -500 )
+    if(radio_control.values[RADIO_MODE] < 500)
 //    if(1)
     {
         //INIT AND BOOLEAN RESET
