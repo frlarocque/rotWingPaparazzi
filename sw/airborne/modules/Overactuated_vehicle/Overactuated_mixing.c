@@ -720,7 +720,7 @@ void overactuated_mixing_run()
             }
             pos_setpoint[0] = pos_vect[0];
             pos_setpoint[1] = pos_vect[1];
-            pos_setpoint[2] = - pos_vect[2];
+            pos_setpoint[2] = pos_vect[2];
             euler_setpoint[2] = euler_vect[2];
         }
 
