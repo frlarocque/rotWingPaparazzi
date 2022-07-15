@@ -795,6 +795,15 @@ void overactuated_mixing_run()
         //We are dividing by the airspeed, so a lower bound is important
         Bound(airspeed_turn,10.0,30.0);
 
+        float accel_y_filt_corrected = 0;
+
+        accel_y_filt_corrected = accely_filt.o[0] 
+                                - actuator_state_filt[0]*actuator_state_filt[0]* OVERACTUATED_MIXING_MOTOR_K_T_OMEGASQ * sin(actuator_state_filt[8])/VEHICLE_MASS
+                                - actuator_state_filt[1]*actuator_state_filt[1]* OVERACTUATED_MIXING_MOTOR_K_T_OMEGASQ * sin(actuator_state_filt[9])/VEHICLE_MASS
+                                - actuator_state_filt[3]*actuator_state_filt[2]* OVERACTUATED_MIXING_MOTOR_K_T_OMEGASQ * sin(actuator_state_filt[10])/VEHICLE_MASS
+                                - actuator_state_filt[3]*actuator_state_filt[3]* OVERACTUATED_MIXING_MOTOR_K_T_OMEGASQ * sin(actuator_state_filt[11])/VEHICLE_MASS;
+                                
+
         if(airspeed > OVERACTUATED_MIXING_MIN_SPEED_TRANSITION){
 //            yaw_rate_setpoint_turn = 9.81 / airspeed_turn * tan(euler_vect[0]) - K_beta * accely;
 //            yaw_rate_setpoint_turn = 9.81*tan(euler_vect[0])/total_V;
@@ -803,10 +812,16 @@ void overactuated_mixing_run()
 //            yaw_rate_setpoint_turn = K_beta * beta_rad;
 
             //Creating the setpoint using the desired lateral acceleration and the body correction:
+
             // yaw_rate_setpoint_turn = acc_setpoint_control_rf[1]/airspeed_turn - K_beta * accely_filt.o[0];
 
+            yaw_rate_setpoint_turn = 9.81*tan(euler_vect[0])/airspeed_turn - K_beta * accel_y_filt_corrected;
+
             //Secpnd option, create the yaw rate setpoint based on phi and lateral body acceleration: 
-            yaw_rate_setpoint_turn = 9.81*tan(euler_vect[0])/airspeed_turn - K_beta * accely_filt.o[0];
+            // yaw_rate_setpoint_turn = 9.81*tan(euler_vect[0])/airspeed_turn - K_beta * accely_filt.o[0];
+        }
+        else{
+            yaw_rate_setpoint_turn = 0;
         }
 
         fwd_multiplier_yaw = (airspeed - OVERACTUATED_MIXING_MIN_SPEED_TRANSITION) / (OVERACTUATED_MIXING_REF_SPEED_TRANSITION - OVERACTUATED_MIXING_MIN_SPEED_TRANSITION);
@@ -858,11 +873,11 @@ void overactuated_mixing_run()
         pos_error[2] = pos_setpoint[2] - pos_vect[2];
 
         //Compute the speed setpoints in the control reference frame:
-        speed_setpoint_control_rf[0] = - MANUAL_CONTROL_MAX_CMD_FWD_SPEED * radio_control.values[RADIO_PITCH]/9600;
-        speed_setpoint_control_rf[1] = MANUAL_CONTROL_MAX_CMD_LAT_SPEED * radio_control.values[RADIO_ROLL]/9600;
-        if( abs(radio_control.values[RADIO_THROTTLE] - 4800) > deadband_stick_throttle ) {
+        speed_setpoint_control_rf[0] = - MANUAL_CONTROL_MAX_CMD_FWD_SPEED * radio_control.values[RADIO_PITCH]/9600.0;
+        speed_setpoint_control_rf[1] = MANUAL_CONTROL_MAX_CMD_LAT_SPEED * radio_control.values[RADIO_ROLL]/9600.0;
+        if( abs(radio_control.values[RADIO_THROTTLE] - 4800.0) > deadband_stick_throttle ) {
             speed_setpoint_control_rf[2] =
-                    -MANUAL_CONTROL_MAX_CMD_VERT_SPEED * (radio_control.values[RADIO_THROTTLE] - 4800) / 4800;
+                    -MANUAL_CONTROL_MAX_CMD_VERT_SPEED * (radio_control.values[RADIO_THROTTLE] - 4800.0) / 4800.0;
         }
         else {
             speed_setpoint_control_rf[2] = 0;
