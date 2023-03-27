@@ -29,7 +29,9 @@ extern void airspeed_wind_estimator_EKF_init(void);
 extern void airspeed_estimator_periodic(void);
 extern void airspeed_estimator_periodic_fetch(void);
 
-extern float tau_filter;
+extern float tau_filter_high;
+extern float tau_filter_low;
+
 extern struct ekf3_t ekf3;
 
 

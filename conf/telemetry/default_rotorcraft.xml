@@ -36,7 +36,7 @@
       <message name="LIDAR"                    period="1.2"/>
       <message name="INS_EKF2"                 period=".25"/>
       <message name="WIND_INFO_RET"            period="1."/>
-      <message name="AIRSPEED_WIND_ESTIMATOR_EKF" period="1.0"/>
+      <message name="AIRSPEED_WIND_ESTIMATOR_EKF" period="0.05"/>
     </mode>
 
     <mode name="ppm">
