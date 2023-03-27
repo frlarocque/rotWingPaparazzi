@@ -20,10 +20,10 @@
   </waypoints>
   <exceptions>
     <!-- RC-Loss -->
-    <exception cond="((radio_control.status == RC_REALLY_LOST) @AND
+    <!--<exception cond="((radio_control.status == RC_REALLY_LOST) @AND
       !(IndexOfBlock('Takeoff') @GT nav_block) @AND
       !(nav_block >= IndexOfBlock('land here')) @AND
-      (autopilot_in_flight() == true) )" deroute="ComeBackAndLand"/>
+      (autopilot_in_flight() == true) )" deroute="ComeBackAndLand"/>-->
 
     <!-- GPS loss -->
     <!-- Not done from flight plan, main.c goes to AP_MODE_FAILSAFE hardcoded -->
@@ -32,11 +32,11 @@
     <!-- Not done from flight plan -->
 
     <!-- Datalink loss -->
-    <exception cond="(datalink_time @GT 60 @AND
+    <!--<exception cond="(datalink_time @GT 60 @AND
       !(datalink_time @GT 120) @AND
       !(IndexOfBlock('Takeoff') @GT nav_block) @AND
       !(nav_block >= IndexOfBlock('land here')) @AND
-      (autopilot_in_flight() == true) )" deroute="DatalinkLoss"/>
+      (autopilot_in_flight() == true) )" deroute="DatalinkLoss"/>-->
 
     <!-- Battery loss -->
     <!--<exception cond="(electrical.bat_low @AND
@@ -87,11 +87,13 @@
       <go from="p2" hmode="route" wp="p1"/>
       <deroute block="stay_p1"/>
     </block>
-    <block name="route">
-      <go from="p1" hmode="route" wp="p2"/>
-      <go from="p2" hmode="route" wp="p3"/>
-      <go from="p3" hmode="route" wp="p4"/>
-      <go from="p4" hmode="route" wp="p1"/>
+    <block name="route" pre_call="nav_set_heading_towards_target()">
+      <while cond="TRUE">
+        <go from="p1" hmode="route" wp="p2" approaching_time="0.5"/>
+        <go from="p2" hmode="route" wp="p3" approaching_time="0.5"/>
+        <go from="p3" hmode="route" wp="p4" approaching_time="0.5"/>
+        <go from="p4" hmode="route" wp="p1" approaching_time="0.5"/>
+      </while>
       <deroute block="stay_p1"/>
     </block>
     <block name="test yaw">
@@ -103,6 +105,9 @@
     </block>
     <block name="circle CAM" pre_call="nav_set_heading_towards_waypoint(WP_CAM)">
       <circle radius="nav_radius" wp="CAM"/>
+    </block>
+    <block name="circle NORM" pre_call="nav_set_heading_towards_target()">
+      <circle radius="nav_radius" wp="TD"/>
     </block>
     <block name="land here" strip_button="Land Here" strip_icon="land-right.png">
       <call_once fun="NavSetWaypointHere(WP_TD)"/>

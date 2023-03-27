@@ -1,0 +1,35 @@
+<!DOCTYPE module SYSTEM "module.dtd">
+
+<module name="airspeed_wind_estimator_EKF" dir="meteo">
+  <doc>
+    <description>
+      Airspeed and Wind Estimator with EKF 
+      Frédéric Larocque
+    </description>
+    <define name="PERIODIC_FREQUENCY_AIRSPEED_EKF" value="1" description="Airspeed periodic frequency"/>
+    <define name="PERIODIC_FREQUENCY_AIRSPEED_EKF_FETCH" value="50" description="Airspeed periodic fetch frequency"/>
+  </doc>
+  <settings>
+    <dl_settings>
+      <dl_settings name="Airspeed_EKF">
+        <dl_setting MAX="10" MIN="0.1" STEP="0.1" module="modules/meteo/airspeed_wind_estimator_EKF" VAR="tau_filter" shortname="tau"/>
+      </dl_settings>
+    </dl_settings>
+  </settings>
+  <header>
+    <file name="airspeed_wind_estimator_EKF.h"/>
+  </header>
+  <init fun="airspeed_wind_estimator_EKF_init()"/>
+  <periodic fun="airspeed_estimator_periodic()" freq="1."  autorun="TRUE"/>
+  <periodic fun="airspeed_estimator_periodic_fetch()" freq="50."  autorun="TRUE"/>
+  <makefile target="ap|nps">
+    <file name="airspeed_wind_estimator_EKF.c"/>
+  </makefile>
+  <!--
+  <makefile target="ap|nps" firmware="rotorcraft">
+    <file name="airspeed_wind_estimator_EKF.c" dir="$(SRC_FIRMWARE)/meteo"/>
+    <define name="AIRSPEED_WIND_ESTIMATOR_EKF" value="TRUE"/>
+  </makefile>
+  -->
+</module>
+
