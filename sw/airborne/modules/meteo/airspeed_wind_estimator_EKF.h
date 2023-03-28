@@ -34,7 +34,7 @@ extern void ekf_AW_init(void);
 extern void ekf_AW_reset(void);
 
 // Filtering functions
-extern void ekf_AW_propagate(struct FloatVect3 *acc, float dt);
+extern void ekf_AW_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct FloatEulers *euler, float *pusher_RPM,float *hover_RPM[4], float *skew, float *elevator_angle, struct FloatVect3 * V_gnd, struct FloatVect3 *acc_filt, float *V_pitot,float dt);
 
 // Getter/Setter functions
 extern struct NedCoor_f ekf_AW_get_speed_body(void);

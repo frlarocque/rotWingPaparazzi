@@ -9,19 +9,26 @@
 
 /* Main EKF structure */
 struct airspeed_wind_ekf {
-  struct FloatRates delta_gyro;   ///< Last gyroscope measurements
-  struct FloatVect3 delta_accel;  ///< Last accelerometer measurements
-  struct FloatEulers euler; /// Euler angles
-  struct FloatVect3 Vg_NED; /// Ground Speed
 
+  // States
+  float mu[3];
+  float V_body[3];
+
+  // Inputs
+  struct FloatVect3 acc;  ///< Last accelerometer measurements
+  struct FloatRates gyro;   ///< Last gyroscope measurements
+  struct FloatEulers euler; /// Euler angles
+  
   float RPM_hover[4]; /// Hover motor RPM
   float RPM_pusher; /// Pusher motor RPM
   float skew; /// Skew
+  float elevator_angle;
   
-  float airspeed; /// Pitot tube airspeed
+  // Measurements
+  struct FloatVect3 Vg_NED; /// Ground Speed
+  struct FloatVect3 acc_filt;  ///< Last accelerometer measurements
+  float V_pitot; /// Pitot tube airspeed
 
-  float mu[3];
-  float V_body[3];
 };
 
 extern void airspeed_wind_estimator_EKF_wrapper_init(void);

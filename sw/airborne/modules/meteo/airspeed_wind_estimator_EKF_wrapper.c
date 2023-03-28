@@ -36,6 +36,7 @@ Butterworth2LowPass filt_hover_prop_rpm[4];
 Butterworth2LowPass filt_pusher_prop_rpm;
 Butterworth2LowPass filt_skew;
 Butterworth2LowPass filt_elevator_pprz;
+Butterworth2LowPass filt_airspeed_pitot;
 
 
 #ifndef PERIODIC_FREQUENCY_AIRSPEED_EKF_FETCH
@@ -68,6 +69,7 @@ void airspeed_wind_estimator_EKF_wrapper_init(void){
   init_butterworth_2_low_pass(&filt_pusher_prop_rpm, tau_low, sample_time, 0.0); // Init filters Pusher Prop
   init_butterworth_2_low_pass(&filt_skew, tau_low, sample_time, 0.0); // Init filters Skew
   init_butterworth_2_low_pass(&filt_elevator_pprz, tau_low, sample_time, 0.0); // Init filters Pusher Prop
+  init_butterworth_2_low_pass(&filt_airspeed_pitot, tau_low, sample_time, 0.0); // Init filters Pusher Prop
 
   #if PERIODIC_TELEMETRY
     register_periodic_telemetry(DefaultPeriodic, PPRZ_MSG_ID_AIRSPEED_WIND_ESTIMATOR_EKF, send_airspeed_wind_ekf);
@@ -82,15 +84,40 @@ void airspeed_wind_estimator_EKF_wrapper_init(void){
 void airspeed_wind_estimator_EKF_wrapper_periodic(void){
   //printf("Running periodic Airspeed EKF Module\n");
   //printf("Airspeed is: %2.2f\n",filt_groundspeed[0].o[0]);
-  struct FloatVect3 acc;
-  acc.x = filt_acc[0].o[0];
-  acc.y = filt_acc[1].o[0];
-  acc.z = filt_acc[2].o[0];
 
+  air_wind_ekf.acc.x = filt_acc[0].o[0];
+  air_wind_ekf.acc.y = filt_acc[1].o[0];
+  air_wind_ekf.acc.z = filt_acc[2].o[0];
+
+  air_wind_ekf.gyro.p = filt_rate[0].o[0];
+  air_wind_ekf.gyro.q = filt_rate[1].o[0];
+  air_wind_ekf.gyro.r = filt_rate[2].o[0];
+
+  air_wind_ekf.euler.phi = filt_euler[0].o[0];
+  air_wind_ekf.euler.theta = filt_euler[1].o[0];
+  air_wind_ekf.euler.psi = filt_euler[2].o[0];
+
+  for(int8_t i=0; i<4; i++) {
+  air_wind_ekf.RPM_hover[i] = filt_hover_prop_rpm[i].o[0];
+  }
+
+  air_wind_ekf.RPM_pusher = filt_pusher_prop_rpm.o[0];
+  air_wind_ekf.skew = filt_skew.o[0];
+  air_wind_ekf.elevator_angle = filt_elevator_pprz.o[0];
+
+  air_wind_ekf.Vg_NED.x = filt_groundspeed[0].o[0];
+  air_wind_ekf.Vg_NED.y = filt_groundspeed[1].o[0];
+  air_wind_ekf.Vg_NED.z = filt_groundspeed[2].o[0];
+
+  air_wind_ekf.acc_filt.x = filt_acc_low[0].o[0];
+  air_wind_ekf.acc_filt.y = filt_acc_low[1].o[0];
+  air_wind_ekf.acc_filt.z = filt_acc_low[2].o[0];
+
+  air_wind_ekf.V_pitot = filt_airspeed_pitot.o[0];
 
   float sample_time = 1.0 / PERIODIC_FREQUENCY_AIRSPEED_EKF_FETCH;
 
-  ekf_AW_propagate(&acc, sample_time);
+  ekf_AW_propagate(&air_wind_ekf.acc,&air_wind_ekf.gyro, &air_wind_ekf.euler, &air_wind_ekf.RPM_pusher,&air_wind_ekf.RPM_hover, &air_wind_ekf.skew, &air_wind_ekf.elevator_angle, &air_wind_ekf.Vg_NED, &air_wind_ekf.acc_filt, &air_wind_ekf.V_pitot,sample_time);
 
   struct NedCoor_f V_temp = ekf_AW_get_speed_body();
 
@@ -134,4 +161,6 @@ void airspeed_wind_estimator_EKF_wrapper_fetch(void){
   update_butterworth_2_low_pass(&filt_skew, 0);
 
   update_butterworth_2_low_pass(&filt_elevator_pprz, 0);
+
+  update_butterworth_2_low_pass(&filt_airspeed_pitot, 0);
 };

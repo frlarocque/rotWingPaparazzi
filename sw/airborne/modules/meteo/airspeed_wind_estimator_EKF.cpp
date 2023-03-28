@@ -1,5 +1,6 @@
-
 #include "modules/meteo/airspeed_wind_estimator_EKF.h"
+#include <iostream>
+#include <stdio.h>
 
 #ifndef SITL
 // Redifine Eigen assert so it doesn't use memory allocation
@@ -51,7 +52,7 @@ typedef Matrix<float, EKF_AW_R_SIZE, EKF_AW_R_SIZE> EKF_AW_R;
 /** filter state vector
  */
 struct ekfAWState {
-	Vector3f body_vel;
+	Vector3f V_body;
 	Vector3f wind;
   Vector3f offset;
 };
@@ -148,7 +149,7 @@ static const Vector3f gravity( 0.f, 0.f, 9.81f );
 static void init_ekf_AW_state(void)
 {
   // init state
-  ekf_AW_private.state.body_vel = Vector3f::Zero();
+  ekf_AW_private.state.V_body = Vector3f::Zero();
 	ekf_AW_private.state.wind = Vector3f::Zero();
   ekf_AW_private.state.offset = Vector3f::Zero();
 
@@ -202,6 +203,7 @@ void ekf_AW_init(void)
 
   // init state and measurements
   init_ekf_AW_state();
+  printf("Filter init\n");
 
 }
 
@@ -231,61 +233,78 @@ void ekf_AW_reset(void)
 
 /** Full INS propagation
  */
-void ekf_AW_propagate(struct FloatVect3 *acc, float dt)
+void ekf_AW_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct FloatEulers *euler, float *pusher_RPM,float *hover_RPM[4], float *skew, float *elevator_angle, FloatVect3 * V_gnd, FloatVect3 *acc_filt, float *V_pitot,float dt)
 {
-  ekf_AW_private.inputs.accel = Vector3f(acc->x, acc->y, acc->z);
-  //mwp.inputs.rates = ...;
-  //mwp.inputs.euler = ...;
-  //mwp.inputs.RPM_pusher = ...;
-  //mwp.inputs.RPM_hover = ...;
-  //mwp.inputs.skew = ...;
-  //mwp.inputs.elevator_angle = ...;
+  printf("In propagate\n");
+  
+  // Inputs
+  eawp.inputs.accel = Vector3f(acc->x, acc->y, acc->z);
+  
+  eawp.inputs.rates = Vector3f(gyro->p,gyro->q,gyro->r);
+  eawp.inputs.euler = Vector3f(euler->phi,euler->theta,euler->psi);
+  
+  eawp.inputs.RPM_pusher = *pusher_RPM;
+  
+  //eawp.inputs.RPM_hover = Vector4f(*hover_RPM[0],*hover_RPM[1],*hover_RPM[2],*hover_RPM[3]); // Crashes filter for some reason?
+  
+  eawp.inputs.skew = *skew;
+  eawp.inputs.elevator_angle = *elevator_angle;
 
+  // Measurements
+  eawp.measurements.V_gnd = Vector3f(V_gnd->x,V_gnd->y,V_gnd->z);
+  eawp.measurements.accel_filt = Vector3f (acc_filt->x,acc_filt->y,acc_filt->z);
+  eawp.measurements.V_pitot = *V_pitot;
+  
+  Quaternionf q;
+  q = AngleAxisf(eawp.inputs.euler(0), Vector3f::UnitX())
+    * AngleAxisf(eawp.inputs.euler(1), Vector3f::UnitY())
+    * AngleAxisf(eawp.inputs.euler(2), Vector3f::UnitZ());
+  
   // propagate state
-  //state_dev = Vector3f::Zero();
-  //state_dev(0,0) = a_x + -q*w + r*v + -g*sin(theta)
-  //state_dev(1,0) = a_y + p*w + -r*u + g*cos(theta)*sin(phi)
-  //state_dev(2,0) = a_z + -p*v + q*u + g*cos(phi)*cos(theta)
+  Vector3f state_dev = Vector3f::Zero();
+
+  //std::cout << "Cross product:\n" << -eawp.inputs.rates.cross(eawp.state.V_body) << std::endl;
+  state_dev = -eawp.inputs.rates.cross(eawp.state.V_body)+q.toRotationMatrix() * gravity + eawp.inputs.accel;
+
   // Euler integration
+  eawp.state.V_body = eawp.state.V_body + state_dev * dt;
 
-  //mwp.state.quat = (mwp.state.quat + q_d * dt).normalize();
-  //mwp.state.quat = quat_add(mwp.state.quat, quat_smul(q_d, dt));
-  //mwp.state.quat.normalize();
-  eawp.state.body_vel = eawp.state.body_vel + eawp.inputs.accel * dt;
-  /*
+  
   // propagate covariance
-  const Matrix3f Rq = mwp.state.quat.toRotationMatrix();
-  const Matrix3f Rqdt = Rq * dt;
-  const Matrix3f RqA = skew_sym(Rq * accel_unbiased);
-  const Matrix3f RqAdt = RqA * dt;
-  const Matrix3f RqAdt2 = RqAdt * dt;
+  EKF_AW_Cov F = EKF_AW_Cov::Zero();
+  F(0,1) = eawp.inputs.rates(2);
+  F(0,2) = -eawp.inputs.rates(1);
+  F(1,0) = -eawp.inputs.rates(2);
+  F(1,2) = eawp.inputs.rates(0);
+  F(2,0) = eawp.inputs.rates(1);
+  F(2,1) = -eawp.inputs.rates(0);
 
-  MEKFWCov A = MEKFWCov::Identity();
-  A.block<3,3>(MEKF_WIND_qx,MEKF_WIND_rbp) = -Rqdt;
-  A.block<3,3>(MEKF_WIND_vx,MEKF_WIND_qx) = -RqAdt;
-  A.block<3,3>(MEKF_WIND_vx,MEKF_WIND_rbp) = RqAdt2;
-  A.block<3,3>(MEKF_WIND_vx,MEKF_WIND_abx) = -Rqdt;
-  A.block<3,3>(MEKF_WIND_px,MEKF_WIND_qx) = -RqAdt2;
-  A.block<3,3>(MEKF_WIND_px,MEKF_WIND_vx) = Matrix3f::Identity() * dt;
-  A.block<3,3>(MEKF_WIND_px,MEKF_WIND_rbp) = RqAdt2 * dt;
-  A.block<3,3>(MEKF_WIND_px,MEKF_WIND_abx) = -Rqdt * dt;
+  EKF_AW_Cov Ft(F);
+  Ft = F.transpose();
 
-  Matrix<float, MEKF_WIND_COV_SIZE, MEKF_WIND_PROC_NOISE_SIZE> An;
-  An.setZero();
-  An.block<3,3>(MEKF_WIND_qx,MEKF_WIND_qgp) = Rq;
-  An.block<3,3>(MEKF_WIND_vx,MEKF_WIND_qax) = Rq;
-  An.block<3,3>(MEKF_WIND_rbp,MEKF_WIND_qrbp) = Matrix3f::Identity();
-  An.block<3,3>(MEKF_WIND_abx,MEKF_WIND_qabx) = Matrix3f::Identity();
-  An(MEKF_WIND_bb,MEKF_WIND_qbb) = 1.0f;
-  An.block<3,3>(MEKF_WIND_wx,MEKF_WIND_qwx) = Matrix3f::Identity();
+  Matrix<float, EKF_AW_COV_SIZE, EKF_AW_Q_SIZE> L;
+  L.setZero();
+  L(0,0) = 1;
+  L(0,4) = -eawp.state.V_body(2);
+  L(0,5) = eawp.state.V_body(1);
+  L(1,1) = 1;
+  L(1,3) = eawp.state.V_body(2);
+  L(1,5) = -eawp.state.V_body(0);
+  L(2,2) = 1;
+  L(2,3) = -eawp.state.V_body(1);
+  L(2,4) = eawp.state.V_body(0);
+  L(3,6) = 1;
+  L(4,7) = 1;
+  L(5,8) = 1;
+  L(6,9) = 1;
+  L(7,10) = 1;
+  L(8,11) = 1;
+  
+  Matrix<float, EKF_AW_Q_SIZE, EKF_AW_COV_SIZE> Lt;
+  Lt = L.transpose();
 
-  MEKFWCov At(A);
-  At.transposeInPlace();
-  Matrix<float, MEKF_WIND_PROC_NOISE_SIZE, MEKF_WIND_COV_SIZE> Ant;
-  Ant = An.transpose();
-
-  mwp.P = A * mwp.P * At + An * mwp.Q * Ant * dt;
-
+  eawp.P = F * eawp.P * Ft + L * eawp.Q * Lt * dt; // does it need to be multiplied by dt?
+  /*
   if (ins_mekf_wind_params.disable_wind) {
     mwp.P.block<3,MEKF_WIND_COV_SIZE>(MEKF_WIND_wx,0) = Matrix<float,3,MEKF_WIND_COV_SIZE>::Zero();
     mwp.P.block<MEKF_WIND_COV_SIZE-3,3>(0,MEKF_WIND_wx) = Matrix<float,MEKF_WIND_COV_SIZE-3,3>::Zero();
@@ -295,15 +314,15 @@ void ekf_AW_propagate(struct FloatVect3 *acc, float dt)
     mwp.state.wind = Vector3f::Zero();
   }
   */
- //printf("Propagating Filter\n");
+ printf("Propagating Filter\n");
 }
 
 struct NedCoor_f ekf_AW_get_speed_body(void)
 {
   const struct NedCoor_f s = {
-    .x = eawp.state.body_vel(0),
-    .y = eawp.state.body_vel(1),
-    .z = eawp.state.body_vel(2)
+    .x = eawp.state.V_body(0),
+    .y = eawp.state.V_body(1),
+    .z = eawp.state.V_body(2)
   };
   return s;
 }
