@@ -1,38 +1,50 @@
 #ifndef AIRSPEED_WIND_ESTIMATOR_EKF_H
 #define AIRSPEED_WIND_ESTIMATOR_EKF_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "std.h"
-#include "math/pprz_algebra_int.h"
 #include "math/pprz_algebra_float.h"
+#include "math/pprz_geodetic_float.h"
 
-/* Main EKF structure */
-struct ekf3_t {
-  struct FloatRates delta_gyro;   ///< Last gyroscope measurements
-  struct FloatVect3 delta_accel;  ///< Last accelerometer measurements
-  struct FloatEulers euler; /// Euler angles
-  struct FloatVect3 Vg_NED; /// Ground Speed
+// Settings
+struct ekf_AW_parameters {
+  // Q
+  float Q_accel;     ///< accel process noise
+  float Q_gyro;      ///< gyro process noise
+  float Q_mu;        ///< wind process noise
+  float Q_k;         ///< offset process noise
 
-  float RPM_hover[4]; /// Hover motor RPM
-  float RPM_pusher; /// Pusher motor RPM
-  float skew; /// Skew
-  
-  float airspeed; /// Pitot tube airspeed
-  float airspeed_est; /// Airspeed estimation
+  // R
+  float R_V_gnd;      ///< speed measurement noise
+  float R_accel_filt; ///< filtered accel measurement noise
+  float R_V_pitot;      ///< airspeed measurement noise
 
-  struct FloatRMat DCM; /// DCM matrix
-
-  float mu[3];
-  float V[3];
+  // Other options
+  bool wing_installed; ///< Include wing in calculations
+  bool use_model;   ///< disable wind estimation
 };
 
-extern void airspeed_wind_estimator_EKF_init(void);
-extern void airspeed_estimator_periodic(void);
-extern void airspeed_estimator_periodic_fetch(void);
+extern struct ekf_AW_parameters ekf_AW_params;
 
-extern float tau_filter_high;
-extern float tau_filter_low;
+// Init functions
+extern void ekf_AW_init(void);
+extern void ekf_AW_reset(void);
 
-extern struct ekf3_t ekf3;
+// Filtering functions
+extern void ekf_AW_propagate(struct FloatVect3 *acc, float dt);
 
+// Getter/Setter functions
+extern struct NedCoor_f ekf_AW_get_speed_body(void);
+extern struct NedCoor_f ekf_AW_get_wind_ned(void);
+
+// Settings handlers
+extern void ekf_AW_update_params(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* AIRSPEED_WIND_ESTIMATOR_EKF_H */

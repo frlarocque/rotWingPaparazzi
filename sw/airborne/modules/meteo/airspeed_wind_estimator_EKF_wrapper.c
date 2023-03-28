@@ -1,3 +1,4 @@
+#include "modules/meteo/airspeed_wind_estimator_EKF_wrapper.h"
 #include "modules/meteo/airspeed_wind_estimator_EKF.h"
 #include <stdio.h>
 
@@ -9,17 +10,17 @@
 static void send_airspeed_wind_ekf(struct transport_tx *trans, struct link_device *dev)
 {
   pprz_msg_send_AIRSPEED_WIND_ESTIMATOR_EKF(trans, dev, AC_ID,
-                              &ekf3.V[0],
-                              &ekf3.V[1],
-                              &ekf3.V[2],
-                              &ekf3.mu[0],
-                              &ekf3.mu[1],
-                              &ekf3.mu[2]);
+                              &air_wind_ekf.V_body[0],
+                              &air_wind_ekf.V_body[1],
+                              &air_wind_ekf.V_body[2],
+                              &air_wind_ekf.mu[0],
+                              &air_wind_ekf.mu[1],
+                              &air_wind_ekf.mu[2]);
 }
 #endif
 
 // Filter struct
-struct ekf3_t ekf3;
+struct airspeed_wind_ekf air_wind_ekf; // Local wrapper
 
 // Define settings to change filter tau value
 float tau_filter_high = 10.;
@@ -45,7 +46,7 @@ Butterworth2LowPass filt_elevator_pprz;
 #define PERIODIC_FREQUENCY_AIRSPEED_EKF 10
 #endif
 
-void airspeed_wind_estimator_EKF_init(void){
+void airspeed_wind_estimator_EKF_wrapper_init(void){
 
   float sample_time = 1.0 / PERIODIC_FREQUENCY_AIRSPEED_EKF_FETCH;
   float tau_low = 1.0 / (2.0 * M_PI * tau_filter_low);
@@ -68,33 +69,38 @@ void airspeed_wind_estimator_EKF_init(void){
   init_butterworth_2_low_pass(&filt_skew, tau_low, sample_time, 0.0); // Init filters Skew
   init_butterworth_2_low_pass(&filt_elevator_pprz, tau_low, sample_time, 0.0); // Init filters Pusher Prop
 
-
-  ekf3.V[0] = 0;
-  ekf3.V[1] = 0;
-  ekf3.V[2] = 0;
-
-  ekf3.mu[0] = 0;
-  ekf3.mu[1] = 0;
-  ekf3.mu[2] = 0;
-
   #if PERIODIC_TELEMETRY
     register_periodic_telemetry(DefaultPeriodic, PPRZ_MSG_ID_AIRSPEED_WIND_ESTIMATOR_EKF, send_airspeed_wind_ekf);
   #endif
 
-  //printf("Init Airspeed EKF Module\n");
+  // init filter
+  ekf_AW_init();
+
+  printf("Init Airspeed EKF Module\n");
 };
 
-void airspeed_estimator_periodic(void){
+void airspeed_wind_estimator_EKF_wrapper_periodic(void){
   //printf("Running periodic Airspeed EKF Module\n");
   //printf("Airspeed is: %2.2f\n",filt_groundspeed[0].o[0]);
+  struct FloatVect3 acc;
+  acc.x = filt_acc[0].o[0];
+  acc.y = filt_acc[1].o[0];
+  acc.z = filt_acc[2].o[0];
 
-  ekf3.V[0] = filt_acc[0].o[0];
-  ekf3.V[1] = filt_acc_low[0].o[0];
-  ekf3.V[2] = filt_acc_low[2].o[0];
+
+  float sample_time = 1.0 / PERIODIC_FREQUENCY_AIRSPEED_EKF_FETCH;
+
+  ekf_AW_propagate(&acc, sample_time);
+
+  struct NedCoor_f V_temp = ekf_AW_get_speed_body();
+
+  air_wind_ekf.V_body[0] = V_temp.x;
+  air_wind_ekf.V_body[1] = V_temp.y;
+  air_wind_ekf.V_body[2] = V_temp.z;
 
 };
 
-void airspeed_estimator_periodic_fetch(void){
+void airspeed_wind_estimator_EKF_wrapper_fetch(void){
 
   update_butterworth_2_low_pass(&filt_groundspeed[0], stateGetSpeedNed_f()->x);
   update_butterworth_2_low_pass(&filt_groundspeed[1], stateGetSpeedNed_f()->y);
@@ -128,6 +134,4 @@ void airspeed_estimator_periodic_fetch(void){
   update_butterworth_2_low_pass(&filt_skew, 0);
 
   update_butterworth_2_low_pass(&filt_elevator_pprz, 0);
-
-
 };

@@ -20,19 +20,17 @@
   </settings>
   -->
   <header>
-    <file name="airspeed_wind_estimator_EKF.h"/>
+    <file name="airspeed_wind_estimator_EKF_wrapper.h"/>
   </header>
-  <init fun="airspeed_wind_estimator_EKF_init()"/>
-  <periodic fun="airspeed_estimator_periodic()" freq="20."  autorun="TRUE"/>
-  <periodic fun="airspeed_estimator_periodic_fetch()" freq="50."  autorun="TRUE"/>
+  <init fun="airspeed_wind_estimator_EKF_wrapper_init()"/>
+  <periodic fun="airspeed_wind_estimator_EKF_wrapper_periodic()" freq="20."  autorun="TRUE"/>
+  <periodic fun="airspeed_wind_estimator_EKF_wrapper_fetch()" freq="50."  autorun="TRUE"/>
   <makefile target="ap|nps">
-    <file name="airspeed_wind_estimator_EKF.c"/>
+    <file name="airspeed_wind_estimator_EKF.cpp"/>
+    <file name="airspeed_wind_estimator_EKF_wrapper.c"/>
+    <define name="EIGEN_NO_MALLOC"/>
+    <define name="EIGEN_NO_AUTOMATIC_RESIZING"/>
+    <include name="../ext/eigen"/>
   </makefile>
-  <!--
-  <makefile target="ap|nps" firmware="rotorcraft">
-    <file name="airspeed_wind_estimator_EKF.c" dir="$(SRC_FIRMWARE)/meteo"/>
-    <define name="AIRSPEED_WIND_ESTIMATOR_EKF" value="TRUE"/>
-  </makefile>
-  -->
 </module>
 
