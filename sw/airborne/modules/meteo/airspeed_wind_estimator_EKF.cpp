@@ -1,6 +1,7 @@
 #include "modules/meteo/airspeed_wind_estimator_EKF.h"
 #include <iostream>
 #include <stdio.h>
+#include <math.h>
 
 #ifndef SITL
 // Redifine Eigen assert so it doesn't use memory allocation
@@ -83,6 +84,7 @@ struct ekfAWPrivate {
   struct ekfAWState state;
   struct ekfAWInputs inputs;
   struct ekfAWMeasurements measurements;
+  struct ekfAWMeasurements innovations;
 
   EKF_AW_Cov P;
   EKF_AW_Q Q;
@@ -167,6 +169,11 @@ static void init_ekf_AW_state(void)
   ekf_AW_private.inputs.skew = 0.f;
   ekf_AW_private.inputs.elevator_angle = 0.f;
 
+  // init innovation
+  ekf_AW_private.innovations.V_gnd = Vector3f::Zero();
+  ekf_AW_private.innovations.accel_filt = Vector3f::Zero();
+  ekf_AW_private.innovations.V_pitot = 0.f;
+
   // init state covariance
   ekf_AW_private.P = EKF_AW_Cov::Zero();
   ekf_AW_private.P(EKF_AW_u,EKF_AW_u) = EKF_AW_P0_V_body;
@@ -231,7 +238,7 @@ void ekf_AW_reset(void)
   init_ekf_AW_state();
 }
 
-/** Full INS propagation
+/** Full propagation
  */
 void ekf_AW_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct FloatEulers *euler, float *pusher_RPM,float *hover_RPM[4], float *skew, float *elevator_angle, FloatVect3 * V_gnd, FloatVect3 *acc_filt, float *V_pitot,float dt)
 {
@@ -267,7 +274,7 @@ void ekf_AW_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
   state_dev = -eawp.inputs.rates.cross(eawp.state.V_body)+q.toRotationMatrix() * gravity + eawp.inputs.accel;
 
   // Euler integration
-  eawp.state.V_body = eawp.state.V_body + state_dev * dt;
+  eawp.state.V_body += state_dev * dt;
 
   
   // propagate covariance
@@ -299,21 +306,46 @@ void ekf_AW_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
   L(6,9) = 1;
   L(7,10) = 1;
   L(8,11) = 1;
-  
+
   Matrix<float, EKF_AW_Q_SIZE, EKF_AW_COV_SIZE> Lt;
   Lt = L.transpose();
 
   eawp.P = F * eawp.P * Ft + L * eawp.Q * Lt * dt; // does it need to be multiplied by dt?
-  /*
-  if (ins_mekf_wind_params.disable_wind) {
-    mwp.P.block<3,MEKF_WIND_COV_SIZE>(MEKF_WIND_wx,0) = Matrix<float,3,MEKF_WIND_COV_SIZE>::Zero();
-    mwp.P.block<MEKF_WIND_COV_SIZE-3,3>(0,MEKF_WIND_wx) = Matrix<float,MEKF_WIND_COV_SIZE-3,3>::Zero();
-    mwp.P(MEKF_WIND_wx,MEKF_WIND_wx) = INS_MEKF_WIND_P0_WIND;
-    mwp.P(MEKF_WIND_wy,MEKF_WIND_wy) = INS_MEKF_WIND_P0_WIND;
-    mwp.P(MEKF_WIND_wz,MEKF_WIND_wz) = INS_MEKF_WIND_P0_WIND;
-    mwp.state.wind = Vector3f::Zero();
-  }
-  */
+
+  // Innovation
+  eawp.innovations.V_gnd = eawp.measurements.V_gnd - (q.toRotationMatrix() * eawp.state.V_body + eawp.state.wind);
+
+  // S Matrix Calculation
+  Matrix<float, EKF_AW_R_SIZE, EKF_AW_COV_SIZE> G;
+  G.setZero();
+  G(0,0) = cos(eawp.inputs.euler(2)) + cos(eawp.inputs.euler(1));
+  G(0,1) = -cos(eawp.inputs.euler(0))*sin(eawp.inputs.euler(2)) + cos(eawp.inputs.euler(2))*sin(eawp.inputs.euler(0))*sin(eawp.inputs.euler(1));
+  G(0,2) = sin(eawp.inputs.euler(0))*sin(eawp.inputs.euler(2)) + cos(eawp.inputs.euler(0))*cos(eawp.inputs.euler(2))*sin(eawp.inputs.euler(1));
+  G(0,3) = 1;
+  G(1,0) = cos(eawp.inputs.euler(1)) + sin(eawp.inputs.euler(2));
+  G(1,1) = cos(eawp.inputs.euler(0))*cos(eawp.inputs.euler(2)) + sin(eawp.inputs.euler(0))*sin(eawp.inputs.euler(2))*sin(eawp.inputs.euler(1));
+  G(1,2) = -cos(eawp.inputs.euler(2))*sin(eawp.inputs.euler(0)) + cos(eawp.inputs.euler(0))*sin(eawp.inputs.euler(2))*sin(eawp.inputs.euler(1));
+  G(1,4) = 1;
+  G(2,0) = -sin(eawp.inputs.euler(1));
+  G(2,1) = cos(eawp.inputs.euler(1)) + sin(eawp.inputs.euler(0));
+  G(2,2) = cos(eawp.inputs.euler(0)) + cos(eawp.inputs.euler(1));
+  G(2,5) = 1;
+  // Missing next lines
+
+  Matrix<float, EKF_AW_COV_SIZE, EKF_AW_R_SIZE> Gt;
+  Gt = G.transpose();
+
+  Matrix<float, EKF_AW_R_SIZE, EKF_AW_R_SIZE> S = G * eawp.P * Gt + eawp.R; // M = identity
+
+  Matrix<float, EKF_AW_COV_SIZE, EKF_AW_R_SIZE> K = eawp.P * Gt * S.inverse();
+
+  // Correct states
+  eawp.state.V_body  += K.block<3,3>(0,0) * eawp.innovations.V_gnd; 
+  // Missing other states
+
+  // Update covariance
+  eawp.P = (EKF_AW_Cov::Identity() - K * G) * eawp.P;
+
  printf("Propagating Filter\n");
 }
 
