@@ -30,10 +30,10 @@ typedef Matrix<float, EKF_AW_COV_SIZE, EKF_AW_COV_SIZE> EKF_AW_Cov;
 /** Process noise elements and size
  */
 enum ekfAWQVar {
-  EKF_AW_w_accel_x, EKF_AW_w_accel_y, EKF_AW_w_accel_z,
-  EKF_AW_w_gyro_x, EKF_AW_w_gyro_y, EKF_AW_w_gyro_z,
-  EKF_AW_w_mu_x, EKF_AW_w_mu_y, EKF_AW_w_mu_z,
-  EKF_AW_w_k_x, EKF_AW_w_k_y, EKF_AW_w_k_z,
+  EKF_AW_Q_accel_x, EKF_AW_Q_accel_y, EKF_AW_Q_accel_z,
+  EKF_AW_Q_gyro_x, EKF_AW_Q_gyro_y, EKF_AW_Q_gyro_z,
+  EKF_AW_Q_mu_x, EKF_AW_Q_mu_y, EKF_AW_Q_mu_z,
+  EKF_AW_Q_k_x, EKF_AW_Q_k_y, EKF_AW_Q_k_z,
   EKF_AW_Q_SIZE
 };
 
@@ -42,9 +42,9 @@ typedef Matrix<float, EKF_AW_Q_SIZE, EKF_AW_Q_SIZE> EKF_AW_Q;
 /** Measurement noise elements and size
  */
 enum ekfAWRVar {
-  EKF_AW_w_V_gnd_x, EKF_AW_w_V_gnd_y, EKF_AW_w_V_gnd_z,
-  EKF_AW_w_a_x_filt, EKF_AW_w_a_y_filt, EKF_AW_w_a_z_filt,
-  EKF_AW_w_V_pitot, 
+  EKF_AW_R_V_gnd_x, EKF_AW_R_V_gnd_y, EKF_AW_R_V_gnd_z,
+  EKF_AW_R_a_x_filt, EKF_AW_R_a_y_filt, EKF_AW_R_a_z_filt,
+  EKF_AW_R_V_pitot, 
   EKF_AW_R_SIZE
 };
 
@@ -96,7 +96,7 @@ struct ekfAWPrivate {
 #define EKF_AW_P0_V_body   1.E-2f
 #endif
 #ifndef EKF_AW_P0_mu
-#define EKF_AW_P0_mu   1.E-8f
+#define EKF_AW_P0_mu       1.E-6f
 #endif
 #ifndef EKF_AW_P0_offset
 #define EKF_AW_P0_offset   1.E-10f
@@ -104,13 +104,13 @@ struct ekfAWPrivate {
 
 // Parameters Initial Process Noise
 #ifndef EKF_AW_Q_accel
-#define EKF_AW_Q_accel   1.E-1f
+#define EKF_AW_Q_accel   1.E-2f
 #endif
 #ifndef EKF_AW_Q_gyro
 #define EKF_AW_Q_gyro    1.E-6f
 #endif
 #ifndef EKF_AW_Q_mu
-#define EKF_AW_Q_mu      1.E-8f
+#define EKF_AW_Q_mu      1.E-7f
 #endif
 #ifndef EKF_AW_Q_offset
 #define EKF_AW_Q_offset  1.E-10f
@@ -118,13 +118,13 @@ struct ekfAWPrivate {
 
 // Parameters Initial Measurement Noise
 #ifndef EKF_AW_R_V_gnd
-#define EKF_AW_R_V_gnd   1.E-4f
+#define EKF_AW_R_V_gnd        1.E-4f
 #endif
 #ifndef EKF_AW_R_accel_filt
 #define EKF_AW_R_accel_filt   1.E-2f
 #endif
 #ifndef EKF_AW_R_V_pitot
-#define EKF_AW_R_V_pitot   1.E-2f
+#define EKF_AW_R_V_pitot      1.E-2f
 #endif
 
 // Other options
@@ -217,19 +217,16 @@ void ekf_AW_init(void)
 void ekf_AW_update_params(void)
 {
   Matrix<float, EKF_AW_Q_SIZE, 1> vp;
-  vp(EKF_AW_w_accel_x) = vp(EKF_AW_w_accel_y) = vp(EKF_AW_w_accel_z) = ekf_AW_params.Q_accel;
-  vp(EKF_AW_w_gyro_x) = vp(EKF_AW_w_gyro_y) = vp(EKF_AW_w_gyro_z) = ekf_AW_params.Q_gyro;
-  vp(EKF_AW_w_mu_x) = vp(EKF_AW_w_mu_y) = vp(EKF_AW_w_mu_z) = ekf_AW_params.Q_mu;
-  vp(EKF_AW_w_k_x) = vp(EKF_AW_w_k_y) = vp(EKF_AW_w_k_z) = ekf_AW_params.Q_k;
+  vp(EKF_AW_Q_accel_x) = vp(EKF_AW_Q_accel_y) = vp(EKF_AW_Q_accel_z) = ekf_AW_params.Q_accel;
+  vp(EKF_AW_Q_gyro_x) = vp(EKF_AW_Q_gyro_y) = vp(EKF_AW_Q_gyro_z) = ekf_AW_params.Q_gyro;
+  vp(EKF_AW_Q_mu_x) = vp(EKF_AW_Q_mu_y) = vp(EKF_AW_Q_mu_z) = ekf_AW_params.Q_mu;
+  vp(EKF_AW_Q_k_x) = vp(EKF_AW_Q_k_y) = vp(EKF_AW_Q_k_z) = ekf_AW_params.Q_k;
   ekf_AW_private.Q = vp.asDiagonal();
 
   Matrix<float, EKF_AW_R_SIZE, 1> vm;
-  EKF_AW_w_V_gnd_x, EKF_AW_w_V_gnd_y, EKF_AW_w_V_gnd_z,
-  EKF_AW_w_a_x_filt, EKF_AW_w_a_y_filt, EKF_AW_w_a_z_filt,
-  EKF_AW_w_V_pitot, 
-  vm(EKF_AW_w_V_gnd_x) = vm(EKF_AW_w_V_gnd_y) = vm(EKF_AW_w_V_gnd_z) = ekf_AW_params.R_V_gnd;
-  vm(EKF_AW_w_a_x_filt) = vm(EKF_AW_w_a_y_filt) = vm(EKF_AW_w_a_z_filt) = ekf_AW_params.R_accel_filt;
-  vm(EKF_AW_w_V_pitot) = ekf_AW_params.R_V_pitot;
+  vm(EKF_AW_R_V_gnd_x) = vm(EKF_AW_R_V_gnd_y) = vm(EKF_AW_R_V_gnd_z) = ekf_AW_params.R_V_gnd;
+  vm(EKF_AW_R_a_x_filt) = vm(EKF_AW_R_a_y_filt) = vm(EKF_AW_R_a_z_filt) = ekf_AW_params.R_accel_filt;
+  vm(EKF_AW_R_V_pitot) = ekf_AW_params.R_V_pitot;
   ekf_AW_private.R = vm.asDiagonal();
 }
 
@@ -242,11 +239,10 @@ void ekf_AW_reset(void)
  */
 void ekf_AW_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct FloatEulers *euler, float *pusher_RPM,float *hover_RPM[4], float *skew, float *elevator_angle, FloatVect3 * V_gnd, FloatVect3 *acc_filt, float *V_pitot,float dt)
 {
-  printf("In propagate\n");
+  //printf("In propagate\n");
   
   // Inputs
   eawp.inputs.accel = Vector3f(acc->x, acc->y, acc->z);
-  
   eawp.inputs.rates = Vector3f(gyro->p,gyro->q,gyro->r);
   eawp.inputs.euler = Vector3f(euler->phi,euler->theta,euler->psi);
   
@@ -262,91 +258,116 @@ void ekf_AW_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
   eawp.measurements.accel_filt = Vector3f (acc_filt->x,acc_filt->y,acc_filt->z);
   eawp.measurements.V_pitot = *V_pitot;
   
-  Quaternionf q;
-  q = AngleAxisf(eawp.inputs.euler(0), Vector3f::UnitX())
+  Quaternionf quat;
+  quat = AngleAxisf(eawp.inputs.euler(0), Vector3f::UnitX())
     * AngleAxisf(eawp.inputs.euler(1), Vector3f::UnitY())
     * AngleAxisf(eawp.inputs.euler(2), Vector3f::UnitZ());
   
+  // Temp variables used in matrices
+  float u = eawp.state.V_body(0);
+  float v = eawp.state.V_body(1);
+  float w = eawp.state.V_body(2);
+
+  float p = eawp.inputs.rates(0);
+  float q = eawp.inputs.rates(1);
+  float r = eawp.inputs.rates(2);
+
+  float phi = eawp.inputs.euler(0);
+  float theta = eawp.inputs.euler(1);
+  float psi = eawp.inputs.euler(2);
+
   // propagate state
   Vector3f state_dev = Vector3f::Zero();
-
-  //std::cout << "Cross product:\n" << -eawp.inputs.rates.cross(eawp.state.V_body) << std::endl;
-  state_dev = -eawp.inputs.rates.cross(eawp.state.V_body)+q.toRotationMatrix() * gravity + eawp.inputs.accel;
+  state_dev = -eawp.inputs.rates.cross(eawp.state.V_body)+quat.toRotationMatrix().transpose() * gravity + eawp.inputs.accel;
+  std::cout << "accel:\n" << eawp.inputs.accel << std::endl;
+  std::cout << "state dev:\n" << state_dev << std::endl;
 
   // Euler integration
   eawp.state.V_body += state_dev * dt;
 
-  
   // propagate covariance
   EKF_AW_Cov F = EKF_AW_Cov::Zero();
-  F(0,1) = eawp.inputs.rates(2);
-  F(0,2) = -eawp.inputs.rates(1);
-  F(1,0) = -eawp.inputs.rates(2);
-  F(1,2) = eawp.inputs.rates(0);
-  F(2,0) = eawp.inputs.rates(1);
-  F(2,1) = -eawp.inputs.rates(0);
+  F(0,1) = r;
+  F(0,2) = -q;
+  F(1,0) = -r;
+  F(1,2) = p;
+  F(2,0) = q;
+  F(2,1) = -p;
 
   EKF_AW_Cov Ft(F);
   Ft = F.transpose();
 
   Matrix<float, EKF_AW_COV_SIZE, EKF_AW_Q_SIZE> L;
   L.setZero();
-  L(0,0) = 1;
-  L(0,4) = -eawp.state.V_body(2);
-  L(0,5) = eawp.state.V_body(1);
-  L(1,1) = 1;
-  L(1,3) = eawp.state.V_body(2);
-  L(1,5) = -eawp.state.V_body(0);
-  L(2,2) = 1;
-  L(2,3) = -eawp.state.V_body(1);
-  L(2,4) = eawp.state.V_body(0);
-  L(3,6) = 1;
-  L(4,7) = 1;
-  L(5,8) = 1;
-  L(6,9) = 1;
-  L(7,10) = 1;
-  L(8,11) = 1;
+  L(0,0) =1;
+  L(0,4) =-w;
+  L(0,5) =v;
+  L(1,1) =1;
+  L(1,3) =w;
+  L(1,5) =-u;
+  L(2,2) =1;
+  L(2,3) =-v;
+  L(2,4) =u;
+  L(3,6) =1;
+  L(4,7) =1;
+  L(5,8) =1;
+  L(6,9) =1;
+  L(7,10) =1;
+  L(8,11) =1;
 
   Matrix<float, EKF_AW_Q_SIZE, EKF_AW_COV_SIZE> Lt;
   Lt = L.transpose();
 
-  eawp.P = F * eawp.P * Ft + L * eawp.Q * Lt * dt; // does it need to be multiplied by dt?
+  eawp.P = F * eawp.P * Ft + L * eawp.Q * Lt; // does it need to be multiplied by dt?
 
   // Innovation
-  eawp.innovations.V_gnd = eawp.measurements.V_gnd - (q.toRotationMatrix() * eawp.state.V_body + eawp.state.wind);
+  eawp.innovations.V_gnd = eawp.measurements.V_gnd - (quat.toRotationMatrix() * eawp.state.V_body + eawp.state.wind);
+  // Missing innovation for accel_filt and V_pitot
+
+  //std::cout << "State wind:\n" << eawp.state.wind << std::endl;
+  //std::cout << "V_body:\n" << eawp.state.V_body << std::endl;
+  //std::cout << "V_body_gnd:\n" << quat.toRotationMatrix() * eawp.state.V_body << std::endl;
+  //std::cout << "V_gnd:\n" << eawp.measurements.V_gnd << std::endl;
+  //std::cout << "Innov:\n" << eawp.innovations.V_gnd << std::endl;
+  //std::cout << "Euler:\n" << eawp.inputs.euler << std::endl;
 
   // S Matrix Calculation
   Matrix<float, EKF_AW_R_SIZE, EKF_AW_COV_SIZE> G;
   G.setZero();
-  G(0,0) = cos(eawp.inputs.euler(2)) + cos(eawp.inputs.euler(1));
-  G(0,1) = -cos(eawp.inputs.euler(0))*sin(eawp.inputs.euler(2)) + cos(eawp.inputs.euler(2))*sin(eawp.inputs.euler(0))*sin(eawp.inputs.euler(1));
-  G(0,2) = sin(eawp.inputs.euler(0))*sin(eawp.inputs.euler(2)) + cos(eawp.inputs.euler(0))*cos(eawp.inputs.euler(2))*sin(eawp.inputs.euler(1));
+  G(0,0) = cos(psi)*cos(theta);
+  G(0,1) = cos(psi)*sin(phi)*sin(theta) - cos(phi)*sin(psi);
+  G(0,2) = sin(phi)*sin(psi) + cos(phi)*cos(psi)*sin(theta);
   G(0,3) = 1;
-  G(1,0) = cos(eawp.inputs.euler(1)) + sin(eawp.inputs.euler(2));
-  G(1,1) = cos(eawp.inputs.euler(0))*cos(eawp.inputs.euler(2)) + sin(eawp.inputs.euler(0))*sin(eawp.inputs.euler(2))*sin(eawp.inputs.euler(1));
-  G(1,2) = -cos(eawp.inputs.euler(2))*sin(eawp.inputs.euler(0)) + cos(eawp.inputs.euler(0))*sin(eawp.inputs.euler(2))*sin(eawp.inputs.euler(1));
+  G(1,0) = cos(theta)*sin(psi);
+  G(1,1) = cos(phi)*cos(psi) + sin(phi)*sin(psi)*sin(theta);
+  G(1,2) = cos(phi)*sin(psi)*sin(theta) - cos(psi)*sin(phi);
   G(1,4) = 1;
-  G(2,0) = -sin(eawp.inputs.euler(1));
-  G(2,1) = cos(eawp.inputs.euler(1)) + sin(eawp.inputs.euler(0));
-  G(2,2) = cos(eawp.inputs.euler(0)) + cos(eawp.inputs.euler(1));
+  G(2,0) = -sin(theta);
+  G(2,1) = cos(theta)*sin(phi);
+  G(2,2) = cos(phi)*cos(theta);
   G(2,5) = 1;
-  // Missing next lines
+  // Missing 3 next lines and 3 next columns
 
   Matrix<float, EKF_AW_COV_SIZE, EKF_AW_R_SIZE> Gt;
   Gt = G.transpose();
+
+  //std::cout << "Cov matrix:\n" << eawp.P << std::endl;
 
   Matrix<float, EKF_AW_R_SIZE, EKF_AW_R_SIZE> S = G * eawp.P * Gt + eawp.R; // M = identity
 
   Matrix<float, EKF_AW_COV_SIZE, EKF_AW_R_SIZE> K = eawp.P * Gt * S.inverse();
 
+  //std::cout << "S inverse:\n" << S.inverse() << std::endl;
   // Correct states
   eawp.state.V_body  += K.block<3,3>(0,0) * eawp.innovations.V_gnd; 
+  eawp.state.wind    += K.block<3,3>(3,0) * eawp.innovations.V_gnd; 
+  eawp.state.offset  += K.block<3,3>(6,0) * eawp.innovations.V_gnd;
   // Missing other states
+  //std::cout << "K:\n" << K.block<3,3>(0,0) << std::endl;
 
   // Update covariance
   eawp.P = (EKF_AW_Cov::Identity() - K * G) * eawp.P;
 
- printf("Propagating Filter\n");
 }
 
 struct NedCoor_f ekf_AW_get_speed_body(void)

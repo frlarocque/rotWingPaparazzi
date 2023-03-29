@@ -4,18 +4,19 @@
 
 #include "state.h"
 #include "filters/low_pass_filter.h"
+#include "math/pprz_algebra.h"
 
 #if PERIODIC_TELEMETRY
 #include "modules/datalink/telemetry.h"
 static void send_airspeed_wind_ekf(struct transport_tx *trans, struct link_device *dev)
 {
   pprz_msg_send_AIRSPEED_WIND_ESTIMATOR_EKF(trans, dev, AC_ID,
-                              &air_wind_ekf.V_body[0],
-                              &air_wind_ekf.V_body[1],
-                              &air_wind_ekf.V_body[2],
-                              &air_wind_ekf.mu[0],
-                              &air_wind_ekf.mu[1],
-                              &air_wind_ekf.mu[2]);
+                              &air_wind_ekf.V_body.x,
+                              &air_wind_ekf.V_body.y,
+                              &air_wind_ekf.V_body.z,
+                              &air_wind_ekf.mu.x,
+                              &air_wind_ekf.mu.y,
+                              &air_wind_ekf.mu.z);
 }
 #endif
 
@@ -25,6 +26,9 @@ struct airspeed_wind_ekf air_wind_ekf; // Local wrapper
 // Define settings to change filter tau value
 float tau_filter_high = 10.;
 float tau_filter_low = 0.5;
+
+// Bool Reset EKF Filter
+bool reset_filter = false;
 
 // Define filter arrays
 Butterworth2LowPass filt_groundspeed[3];
@@ -117,13 +121,16 @@ void airspeed_wind_estimator_EKF_wrapper_periodic(void){
 
   float sample_time = 1.0 / PERIODIC_FREQUENCY_AIRSPEED_EKF_FETCH;
 
-  ekf_AW_propagate(&air_wind_ekf.acc,&air_wind_ekf.gyro, &air_wind_ekf.euler, &air_wind_ekf.RPM_pusher,&air_wind_ekf.RPM_hover, &air_wind_ekf.skew, &air_wind_ekf.elevator_angle, &air_wind_ekf.Vg_NED, &air_wind_ekf.acc_filt, &air_wind_ekf.V_pitot,sample_time);
+  // Reset Filter if required
+  if (reset_filter){
+    ekf_AW_reset();
+  }
+  else{
+    ekf_AW_propagate(&air_wind_ekf.acc,&air_wind_ekf.gyro, &air_wind_ekf.euler, &air_wind_ekf.RPM_pusher,&air_wind_ekf.RPM_hover, &air_wind_ekf.skew, &air_wind_ekf.elevator_angle, &air_wind_ekf.Vg_NED, &air_wind_ekf.acc_filt, &air_wind_ekf.V_pitot,sample_time);
+  }
 
-  struct NedCoor_f V_temp = ekf_AW_get_speed_body();
-
-  air_wind_ekf.V_body[0] = V_temp.x;
-  air_wind_ekf.V_body[1] = V_temp.y;
-  air_wind_ekf.V_body[2] = V_temp.z;
+  air_wind_ekf.V_body = ekf_AW_get_speed_body();
+  air_wind_ekf.mu = ekf_AW_get_wind_ned();
 
 };
 
@@ -133,13 +140,21 @@ void airspeed_wind_estimator_EKF_wrapper_fetch(void){
   update_butterworth_2_low_pass(&filt_groundspeed[1], stateGetSpeedNed_f()->y);
   update_butterworth_2_low_pass(&filt_groundspeed[2], stateGetSpeedNed_f()->z);
 
-  update_butterworth_2_low_pass(&filt_acc[0], stateGetAccelNed_f()->x);
-  update_butterworth_2_low_pass(&filt_acc[1], stateGetAccelNed_f()->y);
-  update_butterworth_2_low_pass(&filt_acc[2], stateGetAccelNed_f()->z);
+  // Transferring from NED to Body as body is not available right now
+  struct Int32Vect3 *ned_accel_i = stateGetAccelNed_i();
+  ned_accel_i->z += ACCEL_BFP_OF_REAL(-9.81); // Add gravity
+  struct Int32Vect3 body_accel_i;
+  int32_rmat_vmult(&body_accel_i, stateGetNedToBodyRMat_i(), ned_accel_i);
+  struct FloatVect3 body_accel_f;
+  ACCELS_FLOAT_OF_BFP(body_accel_f, body_accel_i);
 
-  update_butterworth_2_low_pass(&filt_acc_low[0], stateGetAccelNed_f()->x);
-  update_butterworth_2_low_pass(&filt_acc_low[1], stateGetAccelNed_f()->y);
-  update_butterworth_2_low_pass(&filt_acc_low[2], stateGetAccelNed_f()->z);
+  update_butterworth_2_low_pass(&filt_acc[0], body_accel_f.x);
+  update_butterworth_2_low_pass(&filt_acc[1], body_accel_f.y);
+  update_butterworth_2_low_pass(&filt_acc[2], body_accel_f.z);
+
+  update_butterworth_2_low_pass(&filt_acc_low[0], body_accel_f.x);
+  update_butterworth_2_low_pass(&filt_acc_low[1], body_accel_f.y);
+  update_butterworth_2_low_pass(&filt_acc_low[2], body_accel_f.z);
 
   update_butterworth_2_low_pass(&filt_rate[0], stateGetBodyRates_f()->p);
   update_butterworth_2_low_pass(&filt_rate[1], stateGetBodyRates_f()->q);

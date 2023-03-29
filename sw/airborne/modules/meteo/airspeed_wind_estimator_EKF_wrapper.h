@@ -5,14 +5,15 @@
 #include "std.h"
 #include "math/pprz_algebra_int.h"
 #include "math/pprz_algebra_float.h"
+#include "math/pprz_geodetic_float.h"
 
 
 /* Main EKF structure */
 struct airspeed_wind_ekf {
 
   // States
-  float mu[3];
-  float V_body[3];
+  struct NedCoor_f mu;
+  struct NedCoor_f V_body;
 
   // Inputs
   struct FloatVect3 acc;  ///< Last accelerometer measurements
@@ -37,6 +38,7 @@ extern void airspeed_wind_estimator_EKF_wrapper_fetch(void);
 
 extern float tau_filter_high;
 extern float tau_filter_low;
+extern bool reset_filter;
 
 extern struct airspeed_wind_ekf air_wind_ekf;
 
