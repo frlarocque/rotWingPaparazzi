@@ -1,6 +1,5 @@
-#ifndef AIRSPEED_WIND_ESTIMATOR_EKF_WRAPPER_H
-#define AIRSPEED_WIND_ESTIMATOR_EKF_WRAPPER_H
-
+#ifndef EKF_AW_WRAPPER_H
+#define EKF_AW_WRAPPER_H
 
 #include "std.h"
 #include "math/pprz_algebra_int.h"
@@ -9,7 +8,7 @@
 
 
 /* Main EKF structure */
-struct airspeed_wind_ekf {
+struct ekfAw {
 
   // States
   struct NedCoor_f mu;
@@ -30,17 +29,22 @@ struct airspeed_wind_ekf {
   struct FloatVect3 acc_filt;  ///< Last accelerometer measurements
   float V_pitot; /// Pitot tube airspeed
 
+  bool reset;
+
 };
 
-extern void airspeed_wind_estimator_EKF_wrapper_init(void);
-extern void airspeed_wind_estimator_EKF_wrapper_periodic(void);
-extern void airspeed_wind_estimator_EKF_wrapper_fetch(void);
+extern void ekf_aw_wrapper_init(void);
+extern void ekf_aw_wrapper_periodic(void);
+extern void ekf_aw_wrapper_fetch(void);
 
 extern float tau_filter_high;
 extern float tau_filter_low;
-extern bool reset_filter;
 
-extern struct airspeed_wind_ekf air_wind_ekf;
+extern struct ekfAw ekf_aw;
 
+#define ekf_aw_wrapper_Reset(_v) { \
+  ekf_aw.reset = false;  \
+  ekf_aw_reset();                  \
+}
 
-#endif /* AIRSPEED_WIND_ESTIMATOR_EKF_WRAPPER_H */
+#endif /* EKF_AW_WRAPPER_H */

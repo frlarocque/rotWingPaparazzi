@@ -42,7 +42,7 @@
     </module>
 
   <!--Airspeed estimation using EKF-->
-  <module name="airspeed_wind_estimator_EKF"/>
+  <module name="ekf_aw"/>
 
   </firmware>
 

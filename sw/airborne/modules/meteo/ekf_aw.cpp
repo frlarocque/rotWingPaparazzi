@@ -1,4 +1,4 @@
-#include "modules/meteo/airspeed_wind_estimator_EKF.h"
+#include "modules/meteo/ekf_aw.h"
 #include <iostream>
 #include <stdio.h>
 #include <math.h>
@@ -18,18 +18,18 @@ using namespace Eigen;
 
 /** Covariance matrix elements and size
  */
-enum ekfAWCovVar {
+enum ekfAwCovVar {
   EKF_AW_u, EKF_AW_v, EKF_AW_w,
    EKF_AW_mu_x, EKF_AW_mu_y, EKF_AW_mu_z,
    EKF_AW_k_x, EKF_AW_k_y, EKF_AW_k_z,
    EKF_AW_COV_SIZE
 };
 
-typedef Matrix<float, EKF_AW_COV_SIZE, EKF_AW_COV_SIZE> EKF_AW_Cov;
+typedef Matrix<float, EKF_AW_COV_SIZE, EKF_AW_COV_SIZE> EKF_Aw_Cov;
 
 /** Process noise elements and size
  */
-enum ekfAWQVar {
+enum ekfAwQVar {
   EKF_AW_Q_accel_x, EKF_AW_Q_accel_y, EKF_AW_Q_accel_z,
   EKF_AW_Q_gyro_x, EKF_AW_Q_gyro_y, EKF_AW_Q_gyro_z,
   EKF_AW_Q_mu_x, EKF_AW_Q_mu_y, EKF_AW_Q_mu_z,
@@ -37,22 +37,22 @@ enum ekfAWQVar {
   EKF_AW_Q_SIZE
 };
 
-typedef Matrix<float, EKF_AW_Q_SIZE, EKF_AW_Q_SIZE> EKF_AW_Q;
+typedef Matrix<float, EKF_AW_Q_SIZE, EKF_AW_Q_SIZE> EKF_Aw_Q;
 
 /** Measurement noise elements and size
  */
-enum ekfAWRVar {
+enum ekfAwRVar {
   EKF_AW_R_V_gnd_x, EKF_AW_R_V_gnd_y, EKF_AW_R_V_gnd_z,
   EKF_AW_R_a_x_filt, EKF_AW_R_a_y_filt, EKF_AW_R_a_z_filt,
   EKF_AW_R_V_pitot, 
   EKF_AW_R_SIZE
 };
 
-typedef Matrix<float, EKF_AW_R_SIZE, EKF_AW_R_SIZE> EKF_AW_R;
+typedef Matrix<float, EKF_AW_R_SIZE, EKF_AW_R_SIZE> EKF_Aw_R;
 
 /** filter state vector
  */
-struct ekfAWState {
+struct ekfAwState {
 	Vector3f V_body;
 	Vector3f wind;
   Vector3f offset;
@@ -60,7 +60,7 @@ struct ekfAWState {
 
 /** filter command vector
  */
-struct ekfAWInputs {
+struct ekfAwInputs {
 	Vector3f accel;
   Vector3f rates;
   Vector3f euler;
@@ -72,7 +72,7 @@ struct ekfAWInputs {
 
 /** filter measurement vector
  */
-struct ekfAWMeasurements {
+struct ekfAwMeasurements {
 	Vector3f V_gnd;
 	Vector3f accel_filt;
 	float V_pitot;
@@ -80,15 +80,15 @@ struct ekfAWMeasurements {
 
 /** private filter structure
  */
-struct ekfAWPrivate {
-  struct ekfAWState state;
-  struct ekfAWInputs inputs;
-  struct ekfAWMeasurements measurements;
-  struct ekfAWMeasurements innovations;
+struct ekfAwPrivate {
+  struct ekfAwState state;
+  struct ekfAwInputs inputs;
+  struct ekfAwMeasurements measurements;
+  struct ekfAwMeasurements innovations;
 
-  EKF_AW_Cov P;
-  EKF_AW_Q Q;
-  EKF_AW_R R;
+  EKF_Aw_Cov P;
+  EKF_Aw_Q Q;
+  EKF_Aw_R R;
 };
 
 // Parameters Initial Covariance Matrix
@@ -104,7 +104,7 @@ struct ekfAWPrivate {
 
 // Parameters Initial Process Noise
 #ifndef EKF_AW_Q_accel
-#define EKF_AW_Q_accel   1.E-2f
+#define EKF_AW_Q_accel   1.E-5f
 #endif
 #ifndef EKF_AW_Q_gyro
 #define EKF_AW_Q_gyro    1.E-6f
@@ -136,108 +136,108 @@ struct ekfAWPrivate {
 #endif
 
 // paramters
-struct ekf_AW_parameters ekf_AW_params;
+struct ekfAwParameters ekf_aw_params;
 
 // internal structure
-static struct ekfAWPrivate ekf_AW_private;
+static struct ekfAwPrivate ekf_aw_private;
 // short name
-#define eawp ekf_AW_private
+#define eawp ekf_aw_private
 
 /* earth gravity model */
 static const Vector3f gravity( 0.f, 0.f, 9.81f );
 
 
 /* init state and measurements */
-static void init_ekf_AW_state(void)
+static void init_ekf_aw_state(void)
 {
   // init state
-  ekf_AW_private.state.V_body = Vector3f::Zero();
-	ekf_AW_private.state.wind = Vector3f::Zero();
-  ekf_AW_private.state.offset = Vector3f::Zero();
+  eawp.state.V_body = Vector3f::Zero();
+	eawp.state.wind = Vector3f::Zero();
+  eawp.state.offset = Vector3f::Zero();
 
   // init measures
-  ekf_AW_private.measurements.V_gnd = Vector3f::Zero();
-  ekf_AW_private.measurements.accel_filt = Vector3f::Zero();
-  ekf_AW_private.measurements.V_pitot = 0.f;
+  eawp.measurements.V_gnd = Vector3f::Zero();
+  eawp.measurements.accel_filt = Vector3f::Zero();
+  eawp.measurements.V_pitot = 0.f;
 
   // init input
-  ekf_AW_private.inputs.accel = Vector3f::Zero();
-  ekf_AW_private.inputs.rates = Vector3f::Zero();
-  ekf_AW_private.inputs.euler = Vector3f::Zero();
-  ekf_AW_private.inputs.RPM_pusher = 0.f;
-  ekf_AW_private.inputs.RPM_hover = Vector4f::Zero();
-  ekf_AW_private.inputs.skew = 0.f;
-  ekf_AW_private.inputs.elevator_angle = 0.f;
+  eawp.inputs.accel = Vector3f::Zero();
+  eawp.inputs.rates = Vector3f::Zero();
+  eawp.inputs.euler = Vector3f::Zero();
+  eawp.inputs.RPM_pusher = 0.f;
+  eawp.inputs.RPM_hover = Vector4f::Zero();
+  eawp.inputs.skew = 0.f;
+  eawp.inputs.elevator_angle = 0.f;
 
   // init innovation
-  ekf_AW_private.innovations.V_gnd = Vector3f::Zero();
-  ekf_AW_private.innovations.accel_filt = Vector3f::Zero();
-  ekf_AW_private.innovations.V_pitot = 0.f;
+  eawp.innovations.V_gnd = Vector3f::Zero();
+  eawp.innovations.accel_filt = Vector3f::Zero();
+  eawp.innovations.V_pitot = 0.f;
 
   // init state covariance
-  ekf_AW_private.P = EKF_AW_Cov::Zero();
-  ekf_AW_private.P(EKF_AW_u,EKF_AW_u) = EKF_AW_P0_V_body;
-  ekf_AW_private.P(EKF_AW_v,EKF_AW_v) = EKF_AW_P0_V_body;
-  ekf_AW_private.P(EKF_AW_w,EKF_AW_w) = EKF_AW_P0_V_body;
-  ekf_AW_private.P(EKF_AW_mu_x,EKF_AW_mu_x) = EKF_AW_P0_mu;
-  ekf_AW_private.P(EKF_AW_mu_y,EKF_AW_mu_y) = EKF_AW_P0_mu;
-  ekf_AW_private.P(EKF_AW_mu_z,EKF_AW_mu_z) = EKF_AW_P0_mu;
-  ekf_AW_private.P(EKF_AW_k_x,EKF_AW_k_x) = EKF_AW_P0_offset;
-  ekf_AW_private.P(EKF_AW_k_y,EKF_AW_k_y) = EKF_AW_P0_offset;
-  ekf_AW_private.P(EKF_AW_k_z,EKF_AW_k_z) = EKF_AW_P0_offset;
+  eawp.P = EKF_Aw_Cov::Zero();
+  eawp.P(EKF_AW_u,EKF_AW_u) = EKF_AW_P0_V_body;
+  eawp.P(EKF_AW_v,EKF_AW_v) = EKF_AW_P0_V_body;
+  eawp.P(EKF_AW_w,EKF_AW_w) = EKF_AW_P0_V_body;
+  eawp.P(EKF_AW_mu_x,EKF_AW_mu_x) = EKF_AW_P0_mu;
+  eawp.P(EKF_AW_mu_y,EKF_AW_mu_y) = EKF_AW_P0_mu;
+  eawp.P(EKF_AW_mu_z,EKF_AW_mu_z) = EKF_AW_P0_mu;
+  eawp.P(EKF_AW_k_x,EKF_AW_k_x) = EKF_AW_P0_offset;
+  eawp.P(EKF_AW_k_y,EKF_AW_k_y) = EKF_AW_P0_offset;
+  eawp.P(EKF_AW_k_z,EKF_AW_k_z) = EKF_AW_P0_offset;
 
   // init process and measurements noise
-  ekf_AW_update_params();
+  ekf_aw_update_params();
 }
 
 /**
  * Init function
  */
-void ekf_AW_init(void)
+void ekf_aw_init(void)
 {
   // init parameters
-  ekf_AW_params.Q_accel = EKF_AW_Q_accel;     ///< accel process noise
-  ekf_AW_params.Q_gyro = EKF_AW_Q_gyro;      ///< gyro process noise
-  ekf_AW_params.Q_mu = EKF_AW_Q_mu;        ///< wind process noise
-  ekf_AW_params.Q_k = EKF_AW_Q_offset;         ///< offset process noise
+  ekf_aw_params.Q_accel = EKF_AW_Q_accel;     ///< accel process noise
+  ekf_aw_params.Q_gyro = EKF_AW_Q_gyro;      ///< gyro process noise
+  ekf_aw_params.Q_mu = EKF_AW_Q_mu;        ///< wind process noise
+  ekf_aw_params.Q_k = EKF_AW_Q_offset;         ///< offset process noise
 
   // R
-  ekf_AW_params.R_V_gnd = EKF_AW_R_V_gnd;      ///< speed measurement noise
-  ekf_AW_params.R_accel_filt = EKF_AW_R_accel_filt; ///< filtered accel measurement noise
-  ekf_AW_params.R_V_pitot = EKF_AW_R_V_pitot;      ///< airspeed measurement noise
-  ekf_AW_params.wing_installed = EKF_AW_WING_INSTALLED;
-  ekf_AW_params.use_model = EKF_AW_USE_MODEL_BASED;
+  ekf_aw_params.R_V_gnd = EKF_AW_R_V_gnd;      ///< speed measurement noise
+  ekf_aw_params.R_accel_filt = EKF_AW_R_accel_filt; ///< filtered accel measurement noise
+  ekf_aw_params.R_V_pitot = EKF_AW_R_V_pitot;      ///< airspeed measurement noise
+  ekf_aw_params.wing_installed = EKF_AW_WING_INSTALLED;
+  ekf_aw_params.use_model = EKF_AW_USE_MODEL_BASED;
 
   // init state and measurements
-  init_ekf_AW_state();
+  init_ekf_aw_state();
   printf("Filter init\n");
 
 }
 
-void ekf_AW_update_params(void)
+void ekf_aw_update_params(void)
 {
   Matrix<float, EKF_AW_Q_SIZE, 1> vp;
-  vp(EKF_AW_Q_accel_x) = vp(EKF_AW_Q_accel_y) = vp(EKF_AW_Q_accel_z) = ekf_AW_params.Q_accel;
-  vp(EKF_AW_Q_gyro_x) = vp(EKF_AW_Q_gyro_y) = vp(EKF_AW_Q_gyro_z) = ekf_AW_params.Q_gyro;
-  vp(EKF_AW_Q_mu_x) = vp(EKF_AW_Q_mu_y) = vp(EKF_AW_Q_mu_z) = ekf_AW_params.Q_mu;
-  vp(EKF_AW_Q_k_x) = vp(EKF_AW_Q_k_y) = vp(EKF_AW_Q_k_z) = ekf_AW_params.Q_k;
-  ekf_AW_private.Q = vp.asDiagonal();
+  vp(EKF_AW_Q_accel_x) = vp(EKF_AW_Q_accel_y) = vp(EKF_AW_Q_accel_z) = ekf_aw_params.Q_accel;
+  vp(EKF_AW_Q_gyro_x) = vp(EKF_AW_Q_gyro_y) = vp(EKF_AW_Q_gyro_z) = ekf_aw_params.Q_gyro;
+  vp(EKF_AW_Q_mu_x) = vp(EKF_AW_Q_mu_y) = vp(EKF_AW_Q_mu_z) = ekf_aw_params.Q_mu;
+  vp(EKF_AW_Q_k_x) = vp(EKF_AW_Q_k_y) = vp(EKF_AW_Q_k_z) = ekf_aw_params.Q_k;
+  eawp.Q = vp.asDiagonal();
 
   Matrix<float, EKF_AW_R_SIZE, 1> vm;
-  vm(EKF_AW_R_V_gnd_x) = vm(EKF_AW_R_V_gnd_y) = vm(EKF_AW_R_V_gnd_z) = ekf_AW_params.R_V_gnd;
-  vm(EKF_AW_R_a_x_filt) = vm(EKF_AW_R_a_y_filt) = vm(EKF_AW_R_a_z_filt) = ekf_AW_params.R_accel_filt;
-  vm(EKF_AW_R_V_pitot) = ekf_AW_params.R_V_pitot;
-  ekf_AW_private.R = vm.asDiagonal();
+  vm(EKF_AW_R_V_gnd_x) = vm(EKF_AW_R_V_gnd_y) = vm(EKF_AW_R_V_gnd_z) = ekf_aw_params.R_V_gnd;
+  vm(EKF_AW_R_a_x_filt) = vm(EKF_AW_R_a_y_filt) = vm(EKF_AW_R_a_z_filt) = ekf_aw_params.R_accel_filt;
+  vm(EKF_AW_R_V_pitot) = ekf_aw_params.R_V_pitot;
+  eawp.R = vm.asDiagonal();
 }
 
-void ekf_AW_reset(void)
+void ekf_aw_reset(void)
 {
-  init_ekf_AW_state();
+  init_ekf_aw_state();
 }
 
 /** Full propagation
  */
-void ekf_AW_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct FloatEulers *euler, float *pusher_RPM,float *hover_RPM[4], float *skew, float *elevator_angle, FloatVect3 * V_gnd, FloatVect3 *acc_filt, float *V_pitot,float dt)
+void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct FloatEulers *euler, float *pusher_RPM,float *hover_RPM[4], float *skew, float *elevator_angle, FloatVect3 * V_gnd, FloatVect3 *acc_filt, float *V_pitot,float dt)
 {
   //printf("In propagate\n");
   
@@ -279,14 +279,14 @@ void ekf_AW_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
   // propagate state
   Vector3f state_dev = Vector3f::Zero();
   state_dev = -eawp.inputs.rates.cross(eawp.state.V_body)+quat.toRotationMatrix().transpose() * gravity + eawp.inputs.accel;
-  std::cout << "accel:\n" << eawp.inputs.accel << std::endl;
-  std::cout << "state dev:\n" << state_dev << std::endl;
+  //std::cout << "accel:\n" << eawp.inputs.accel << std::endl;
+  //std::cout << "state dev:\n" << state_dev << std::endl;
 
   // Euler integration
   eawp.state.V_body += state_dev * dt;
 
   // propagate covariance
-  EKF_AW_Cov F = EKF_AW_Cov::Zero();
+  EKF_Aw_Cov F = EKF_Aw_Cov::Zero();
   F(0,1) = r;
   F(0,2) = -q;
   F(1,0) = -r;
@@ -294,7 +294,7 @@ void ekf_AW_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
   F(2,0) = q;
   F(2,1) = -p;
 
-  EKF_AW_Cov Ft(F);
+  EKF_Aw_Cov Ft(F);
   Ft = F.transpose();
 
   Matrix<float, EKF_AW_COV_SIZE, EKF_AW_Q_SIZE> L;
@@ -366,11 +366,11 @@ void ekf_AW_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
   //std::cout << "K:\n" << K.block<3,3>(0,0) << std::endl;
 
   // Update covariance
-  eawp.P = (EKF_AW_Cov::Identity() - K * G) * eawp.P;
+  eawp.P = (EKF_Aw_Cov::Identity() - K * G) * eawp.P;
 
 }
 
-struct NedCoor_f ekf_AW_get_speed_body(void)
+struct NedCoor_f ekf_aw_get_speed_body(void)
 {
   const struct NedCoor_f s = {
     .x = eawp.state.V_body(0),
@@ -380,7 +380,7 @@ struct NedCoor_f ekf_AW_get_speed_body(void)
   return s;
 }
 
-struct NedCoor_f ekf_AW_get_wind_ned(void)
+struct NedCoor_f ekf_aw_get_wind_ned(void)
 {
   const struct NedCoor_f w = {
     .x = eawp.state.wind(0),

@@ -1,0 +1,40 @@
+<!DOCTYPE module SYSTEM "module.dtd">
+
+<module name="ekf_aw" dir="meteo">
+  <doc>
+    <description>
+      Airspeed and Wind Estimator with EKF 
+      Frédéric Larocque
+    </description>
+    <define name="PERIODIC_FREQUENCY_AIRSPEED_EKF" value="20" description="Airspeed periodic frequency"/>
+    <define name="PERIODIC_FREQUENCY_AIRSPEED_EKF_FETCH" value="50" description="Airspeed periodic fetch frequency"/>
+  </doc>
+  <settings>
+    <dl_settings>
+      <dl_settings name="EKF_Airspeed_Wind">
+        <dl_setting min="1E-9" max="1E-2" step="1E-8" var="ekf_aw_params.Q_accel" module="meteo/ekf_aw" shortname="Q accel" handler="update_Q_accel"/>
+        <dl_setting min="1E-9" max="1E-2" step="1E-8" var="ekf_aw_params.Q_gyro" module="meteo/ekf_aw" shortname="Q gyro" handler="update_Q_gyro"/>
+        <dl_setting min="1E-9" max="1E-2" step="1E-8" var="ekf_aw_params.Q_mu" module="meteo/ekf_aw" shortname="Q wind" handler="update_Q_mu"/>
+        <dl_setting min="1E-9" max="1E-2" step="1E-8" var="ekf_aw_params.Q_k" module="meteo/ekf_aw" shortname="Q offset" handler="update_Q_k"/>
+        <dl_setting min="1E-9" max="1E-2" step="1E-8" var="ekf_aw_params.R_V_gnd" module="meteo/ekf_aw" shortname="R V_gnd" handler="update_R_V_gnd"/>
+        <dl_setting min="1E-9" max="1E-2" step="1E-8" var="ekf_aw_params.R_accel_filt" module="meteo/ekf_aw" shortname="R Accel Filt" handler="update_R_accel_filt"/>
+        <dl_setting min="1E-9" max="1E-2" step="1E-8" var="ekf_aw_params.R_V_pitot" module="meteo/ekf_aw" shortname="R Pitot" handler="update_R_V_pitot"/>
+        <dl_setting min="0" max="1" step="1" var="ekf_aw.reset" module="meteo/ekf_aw_wrapper" shortname="reset" handler="Reset"/>
+        </dl_settings>
+    </dl_settings>
+  </settings>
+  <header>
+    <file name="ekf_aw_wrapper.h"/>
+  </header>
+  <init fun="ekf_aw_wrapper_init()"/>
+  <periodic fun="ekf_aw_wrapper_periodic()" freq="20."  autorun="TRUE"/>
+  <periodic fun="ekf_aw_wrapper_fetch()" freq="50."  autorun="TRUE"/>
+  <makefile target="ap|nps">
+    <file name="ekf_aw.cpp"/>
+    <file name="ekf_aw_wrapper.c"/>
+    <define name="EIGEN_NO_MALLOC"/>
+    <define name="EIGEN_NO_AUTOMATIC_RESIZING"/>
+    <include name="../ext/eigen"/>
+  </makefile>
+</module>
+
