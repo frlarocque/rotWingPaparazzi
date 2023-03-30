@@ -11,7 +11,7 @@
 struct ekfAw {
 
   // States
-  struct NedCoor_f mu;
+  struct NedCoor_f wind;
   struct NedCoor_f V_body;
 
   // Inputs
@@ -29,7 +29,9 @@ struct ekfAw {
   struct FloatVect3 acc_filt;  ///< Last accelerometer measurements
   float V_pitot; /// Pitot tube airspeed
 
+  // Other
   bool reset;
+  struct NedCoor_f wind_guess;
 
 };
 
@@ -42,9 +44,24 @@ extern float tau_filter_low;
 
 extern struct ekfAw ekf_aw;
 
-#define ekf_aw_wrapper_Reset(_v) { \
+#define ekf_aw_wrapper_reset(_v) { \
   ekf_aw.reset = false;  \
   ekf_aw_reset();                  \
+}
+
+#define ekf_aw_wrapper_set_wind_N(_v) { \
+  ekf_aw.wind_guess.x = _v;  \
+  ekf_aw_set_wind(&ekf_aw.wind_guess);                  \
+}
+
+#define ekf_aw_wrapper_set_wind_E(_v) { \
+  ekf_aw.wind_guess.y = _v;  \
+  ekf_aw_set_wind(&ekf_aw.wind_guess);                  \
+}
+
+#define ekf_aw_wrapper_set_wind_D(_v) { \
+  ekf_aw.wind_guess.z = _v;  \
+  ekf_aw_set_wind(&ekf_aw.wind_guess);                  \
 }
 
 #endif /* EKF_AW_WRAPPER_H */

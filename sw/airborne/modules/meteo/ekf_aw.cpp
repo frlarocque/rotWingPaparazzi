@@ -389,3 +389,11 @@ struct NedCoor_f ekf_aw_get_wind_ned(void)
   };
   return w;
 }
+
+void ekf_aw_set_wind(struct NedCoor_f *s)
+{
+  eawp.state.wind(0) = s->x;
+  eawp.state.wind(1) = s->y;
+  eawp.state.wind(2) = s->z;
+  printf("Wind was set to %f %f %f",eawp.state.wind(0),eawp.state.wind(1),eawp.state.wind(2));
+}

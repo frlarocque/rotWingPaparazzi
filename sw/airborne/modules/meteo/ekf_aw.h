@@ -42,6 +42,7 @@ extern struct NedCoor_f ekf_aw_get_wind_ned(void);
 
 // Settings handlers
 extern void ekf_aw_update_params(void);
+extern void ekf_aw_set_wind(struct NedCoor_f *s);
 
 #define ekf_aw_update_Q_accel(_v) { \
   ekf_aw_params.Q_accel = _v; \

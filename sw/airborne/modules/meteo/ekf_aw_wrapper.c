@@ -14,9 +14,9 @@ static void send_airspeed_wind_ekf(struct transport_tx *trans, struct link_devic
                               &ekf_aw.V_body.x,
                               &ekf_aw.V_body.y,
                               &ekf_aw.V_body.z,
-                              &ekf_aw.mu.x,
-                              &ekf_aw.mu.y,
-                              &ekf_aw.mu.z);
+                              &ekf_aw.wind.x,
+                              &ekf_aw.wind.y,
+                              &ekf_aw.wind.z);
 }
 #endif
 
@@ -124,7 +124,7 @@ void ekf_aw_wrapper_periodic(void){
   ekf_aw_propagate(&ekf_aw.acc,&ekf_aw.gyro, &ekf_aw.euler, &ekf_aw.RPM_pusher,&ekf_aw.RPM_hover, &ekf_aw.skew, &ekf_aw.elevator_angle, &ekf_aw.Vg_NED, &ekf_aw.acc_filt, &ekf_aw.V_pitot,sample_time);
 
   ekf_aw.V_body = ekf_aw_get_speed_body();
-  ekf_aw.mu = ekf_aw_get_wind_ned();
+  ekf_aw.wind = ekf_aw_get_wind_ned();
 
 };
 
