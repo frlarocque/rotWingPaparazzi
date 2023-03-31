@@ -22,6 +22,17 @@ struct ekfAwParameters {
   float R_accel_filt; ///< filtered accel measurement noise
   float R_V_pitot;      ///< airspeed measurement noise
 
+  // Model Based Parameters
+  float vehicle_mass;
+  float k_beta;
+
+  float k1_drag;
+  float k2_drag;
+
+  float k1_fx_push;
+  float k2_fx_push;
+  float k3_fx_push;
+
   // Other options
   bool wing_installed; ///< Include wing in calculations
   bool use_model;   ///< disable wind estimation
@@ -43,6 +54,7 @@ extern struct NedCoor_f ekf_aw_get_wind_ned(void);
 // Settings handlers
 extern void ekf_aw_update_params(void);
 extern void ekf_aw_set_wind(struct NedCoor_f *s);
+
 
 #define ekf_aw_update_Q_accel(_v) { \
   ekf_aw_params.Q_accel = _v; \

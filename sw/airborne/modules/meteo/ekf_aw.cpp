@@ -135,6 +135,32 @@ struct ekfAwPrivate {
 #define EKF_AW_USE_MODEL_BASED false
 #endif
 
+// Model Based Parameters
+#ifndef EKF_AW_K_BETA
+#define EKF_AW_K_BETA -0.2E-2f
+#endif
+
+#ifndef EKF_AW_K1_DRAG
+#define EKF_AW_K1_DRAG 0.f
+#endif
+#ifndef EKF_AW_K2_DRAG
+#define EKF_AW_K2_DRAG -1.2E-2f
+#endif
+
+#ifndef EKF_AW_VEHICLE_MASS
+#define EKF_AW_VEHICLE_MASS 0.5f
+#endif
+
+#ifndef EKF_AW_K1_FX_PUSH
+#define EKF_AW_K1_FX_PUSH 0.0f
+#endif
+#ifndef EKF_AW_K2_FX_PUSH
+#define EKF_AW_K2_FX_PUSH 0.0f
+#endif
+#ifndef EKF_AW_K3_FX_PUSH
+#define EKF_AW_K3_FX_PUSH 0.0f
+#endif
+
 // paramters
 struct ekfAwParameters ekf_aw_params;
 
@@ -208,6 +234,17 @@ void ekf_aw_init(void)
   ekf_aw_params.wing_installed = EKF_AW_WING_INSTALLED;
   ekf_aw_params.use_model = EKF_AW_USE_MODEL_BASED;
 
+  // Model based parameters 
+  ekf_aw_params.vehicle_mass = EKF_AW_VEHICLE_MASS;
+  ekf_aw_params.k_beta = EKF_AW_K_BETA;
+
+  ekf_aw_params.k1_drag = EKF_AW_K1_DRAG;
+  ekf_aw_params.k2_drag = EKF_AW_K2_DRAG;
+
+  ekf_aw_params.k1_fx_push = EKF_AW_K1_FX_PUSH;
+  ekf_aw_params.k2_fx_push = EKF_AW_K2_FX_PUSH;
+  ekf_aw_params.k3_fx_push = EKF_AW_K3_FX_PUSH;
+  
   // init state and measurements
   init_ekf_aw_state();
   printf("Filter init\n");
@@ -346,11 +383,12 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
   eawp.P = F * eawp.P * Ft + L * eawp.Q * Lt; // TO DO: does it need to be multiplied by dt?
 
   // Calculate measurement estimation from state
-  float a_x = eawp.measurements.accel_filt(0);
+  float a_x;
   float a_y; // side acceleration 
   float a_z = eawp.measurements.accel_filt(2);
 
-  // Missing calculation of A_x and A_z
+  // Missing calculation of A_z
+  a_x = (ekf_aw_params.k1_drag*u + ekf_aw_params.k2_drag*u*u + ekf_aw_params.k3_fx_push*u + eawp.inputs.RPM_pusher*eawp.inputs.RPM_pusher*ekf_aw_params.k1_fx_push + eawp.state.offset(0)*u*u + eawp.inputs.RPM_pusher*ekf_aw_params.k2_fx_push*u)/ekf_aw_params.vehicle_mass; // TO DO: add pusher constant as dlsettings
   // ...... 
   // ...... 
   // ...... 
@@ -369,9 +407,7 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
     beta = asinf(v/V_a < -1 ? -1 : v/V_a > 1 ? 1 : v/V_a); // Ratio is kepts between -1 and 1
   }
 
-  float k_beta = -2.3E-2; //TO DO: Set it as a define and dlsetting
-
-  a_y = beta*k_beta*(V_a*V_a) + eawp.state.offset(1);
+  a_y = beta*ekf_aw_params.k_beta*(V_a*V_a) + eawp.state.offset(1);
 
   Vector3f accel_est = {a_x, a_y, a_z};
   //std::cout << "beta:\n" << beta << std::endl;
@@ -380,7 +416,7 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
   // Innovation
   eawp.innovations.V_gnd = eawp.measurements.V_gnd - (quat.toRotationMatrix() * eawp.state.V_body + eawp.state.wind);
   eawp.innovations.accel_filt = eawp.measurements.accel_filt - accel_est;
-  eawp.innovations.V_pitot = eawp.measurements.V_pitot - eawp.state.V_body(0);
+  eawp.innovations.V_pitot = eawp.state.V_body(0)-eawp.state.V_body(0); //eawp.measurements.V_pitot - eawp.state.V_body(0);
 
   //std::cout << "State wind:\n" << eawp.state.wind << std::endl;
   //std::cout << "V_body:\n" << eawp.state.V_body << std::endl;
@@ -399,6 +435,7 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
   */
   Matrix<float, EKF_AW_R_SIZE, EKF_AW_COV_SIZE> G;
   G.setZero();
+  // V_gnd related lines
   G(0,0) = cos_psi*cos_theta;
   G(0,1) = cos_psi*sin_phi*sin_theta - cos_phi*sin_psi;
   G(0,2) = sin_phi*sin_psi + cos_phi*cos_psi*sin_theta;
@@ -411,28 +448,29 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
   G(2,1) = cos_theta*sin_phi;
   G(2,2) = cos_phi*cos_theta;
   G(2,5) = 1;
-  // Missing 3 lines: a_x a_z V_pitot
-  /*
-  G(3,0) = (k3_Fx_push + RPM_pusher*k2_Fx_push + 2*k1_Fx_hprop*u + 2*k_x*u + 2*u*(k2_Fx_fus + k4_Fx_fus*atan(w/u)^2 + k1_Fx_fus*cos(skew) + k3_Fx_fus*atan(w/u)) + 2*u*(k1_Fx_elev + elevator_angle*k2_Fx_elev + elevator_angle^2*k3_Fx_elev) - ((k3_Fx_fus*w)/(u^2*(w^2/u^2 + 1)) + (2*k4_Fx_fus*w*atan(w/u))/(u^2*(w^2/u^2 + 1)))*(u^2 + v^2 + w^2) + (k2_Fx_hprop*(RPM_hover_1/4 + RPM_hover_2/4 + RPM_hover_3/4 + RPM_hover_4/4)^2)/(2*u^(1/2)) - (k4_Fx_w + sin(skew)^2)*((k2_Fx_w*w)/(u^2*(w^2/u^2 + 1)) + (2*k3_Fx_w*w*atan(w/u))/(u^2*(w^2/u^2 + 1)))*(u^2 + v^2 + w^2) + 2*u*(k4_Fx_w + sin(skew)^2)*(k3_Fx_w*atan(w/u)^2 + k1_Fx_w*(k5_Fx_w*skew + 1) + k2_Fx_w*atan(w/u)))/m;
-  G(3,1) = (2*v*(k2_Fx_fus + k4_Fx_fus*atan(w/u)^2 + k1_Fx_fus*cos(skew) + k3_Fx_fus*atan(w/u)) + 2*v*(k1_Fx_elev + elevator_angle*k2_Fx_elev + elevator_angle^2*k3_Fx_elev) + 2*v*(k4_Fx_w + sin(skew)^2)*(k3_Fx_w*atan(w/u)^2 + k1_Fx_w*(k5_Fx_w*skew + 1) + k2_Fx_w*atan(w/u)))/m;
-  G(3,2) = (2*w*(k2_Fx_fus + k4_Fx_fus*atan(w/u)^2 + k1_Fx_fus*cos(skew) + k3_Fx_fus*atan(w/u)) + 2*w*(k1_Fx_elev + elevator_angle*k2_Fx_elev + elevator_angle^2*k3_Fx_elev) + (k3_Fx_fus/(u*(w^2/u^2 + 1)) + (2*k4_Fx_fus*atan(w/u))/(u*(w^2/u^2 + 1)))*(u^2 + v^2 + w^2) + (k4_Fx_w + sin(skew)^2)*(k2_Fx_w/(u*(w^2/u^2 + 1)) + (2*k3_Fx_w*atan(w/u))/(u*(w^2/u^2 + 1)))*(u^2 + v^2 + w^2) + 2*w*(k4_Fx_w + sin(skew)^2)*(k3_Fx_w*atan(w/u)^2 + k1_Fx_w*(k5_Fx_w*skew + 1) + k2_Fx_w*atan(w/u)))/m;
-  G(3,6) = u^2/m;
-  */
-  float temp_V_a = V_a ==0 ? 1E-7 : V_a;
-  float temp_diff = 1 - v*v/(temp_V_a) < 0 ? 0 : 1 - v*v/(temp_V_a);
+  
+  // A_x_filt related lines
+  ekf_aw_params.vehicle_mass = ekf_aw_params.vehicle_mass == 0 ? 1E-1 : ekf_aw_params.vehicle_mass;
+  G(3,0) = (ekf_aw_params.k1_drag + ekf_aw_params.k3_fx_push + eawp.inputs.RPM_pusher*ekf_aw_params.k2_fx_push + 2*ekf_aw_params.k2_drag*u + 2*eawp.state.offset(0)*u)/ekf_aw_params.vehicle_mass; // Simplified version (using u instead of V_a)
+  G(3,6) = (u*u)/ekf_aw_params.vehicle_mass;
 
-  G(4,0) = 2*k_beta*u*beta - (k_beta*u*v)/(cosf(beta)*V_a); // TO DO: protect agains division by 0
-  G(4,1) = 2*k_beta*v*beta + (k_beta*(V_a - v*sinf(beta)))/cosf(beta); // TO DO: protect agains division by 0
-  G(4,2) = 2*k_beta*w*beta - (k_beta*v*w)/(cosf(beta)*V_a); // TO DO: protect agains division by 0
+  // A_y_filt related lines
+  float protected_V_a = V_a ==0 ? 1E-7 : V_a;
+  float cos_beta = cosf(beta) == 0 ? 1E-8 : cosf(beta);
+  G(4,0) = 2*ekf_aw_params.k_beta*u*beta - (ekf_aw_params.k_beta*u*v)/(cos_beta*protected_V_a); // TO DO: protect agains division by 0
+  G(4,1) = 2*ekf_aw_params.k_beta*v*beta + (ekf_aw_params.k_beta*(V_a - v*sinf(beta)))/cos_beta; // TO DO: protect agains division by 0
+  G(4,2) = 2*ekf_aw_params.k_beta*w*beta - (ekf_aw_params.k_beta*v*w)/(cos_beta*protected_V_a); // TO DO: protect agains division by 0
   G(4,7) = 1;
   
+  // TO DO: A_z_filt related lines 
   /*
   G(5,0) = (2*u*(k2_Fz_fus + k4_Fz_fus*atan(w/u)^2 + k1_Fz_fus*cos(skew) + k3_Fz_fus*atan(w/u)) + 2*u*(k1_Fz_elev + elevator_angle*k2_Fz_elev + elevator_angle^2*k3_Fz_elev) - ((k3_Fz_fus*w)/(u^2*(w^2/u^2 + 1)) + (2*k4_Fz_fus*w*atan(w/u))/(u^2*(w^2/u^2 + 1)))*(u^2 + v*v + w^2) - (k4_Fz_w + sin(skew)^2)*((k2_Fz_w*w)/(u^2*(w^2/u^2 + 1)) + (2*k3_Fz_w*w*atan(w/u))/(u^2*(w^2/u^2 + 1)))*(u^2 + v^2 + w^2) + 2*u*(k4_Fz_w + sin(skew)^2)*(k1_Fz_w + k3_Fz_w*atan(w/u)^2 + k2_Fz_w*atan(w/u)))/m;
   G(5,1) = (2*v*(k2_Fz_fus + k4_Fz_fus*atan(w/u)^2 + k1_Fz_fus*cos(skew) + k3_Fz_fus*atan(w/u)) + 2*v*(k1_Fz_elev + elevator_angle*k2_Fz_elev + elevator_angle^2*k3_Fz_elev) + 2*v*(k4_Fz_w + sin(skew)^2)*(k1_Fz_w + k3_Fz_w*atan(w/u)^2 + k2_Fz_w*atan(w/u)))/m;
   G(5,2) = (2*w*(k2_Fz_fus + k4_Fz_fus*atan(w/u)^2 + k1_Fz_fus*cos(skew) + k3_Fz_fus*atan(w/u)) + 2*w*(k1_Fz_elev + elevator_angle*k2_Fz_elev + elevator_angle^2*k3_Fz_elev) + (k3_Fz_fus/(u*(w^2/u^2 + 1)) + (2*k4_Fz_fus*atan(w/u))/(u*(w^2/u^2 + 1)))*(u^2 + v^2 + w^2) + (k4_Fz_w + sin(skew)^2)*(k2_Fz_w/(u*(w^2/u^2 + 1)) + (2*k3_Fz_w*atan(w/u))/(u*(w^2/u^2 + 1)))*(u^2 + v^2 + w^2) + 2*w*(k4_Fz_w + sin(skew)^2)*(k1_Fz_w + k3_Fz_w*atan(w/u)^2 + k2_Fz_w*atan(w/u)))/m;
   G(5,8) = 1;
-  G(6,0) = 1;
   */
+  // V_pitot related lines 
+  G(6,0) = 1;
 
   Matrix<float, EKF_AW_COV_SIZE, EKF_AW_R_SIZE> Gt;
   Gt = G.transpose();
@@ -441,7 +479,7 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
   Matrix<float, EKF_AW_R_SIZE, EKF_AW_R_SIZE> S = G * eawp.P * Gt + eawp.R; // M = identity
 
   // Kalman Gain Calculation
-  Matrix<float, EKF_AW_COV_SIZE, EKF_AW_R_SIZE> K = eawp.P * Gt * S.inverse();
+  Matrix<float, EKF_AW_COV_SIZE, EKF_AW_R_SIZE> K = eawp.P * Gt * S.inverse(); // TO DO: make sure no NAN can be created in inversion
 
   //std::cout << "G matrix:\n" << G << std::endl;
   //std::cout << "Cov matrix:\n" << eawp.P << std::endl;
@@ -497,5 +535,5 @@ void ekf_aw_set_wind(struct NedCoor_f *s)
   eawp.state.wind(0) = s->x;
   eawp.state.wind(1) = s->y;
   eawp.state.wind(2) = s->z;
-  printf("Wind was set to %f %f %f",eawp.state.wind(0),eawp.state.wind(1),eawp.state.wind(2));
+  //printf("Wind was set to %f %f %f",eawp.state.wind(0),eawp.state.wind(1),eawp.state.wind(2));
 }
