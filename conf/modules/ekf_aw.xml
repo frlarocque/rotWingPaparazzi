@@ -6,8 +6,8 @@
       Airspeed and Wind Estimator with EKF 
       Frédéric Larocque
     </description>
-    <define name="PERIODIC_FREQUENCY_AIRSPEED_EKF" value="20" description="Airspeed periodic frequency"/>
-    <define name="PERIODIC_FREQUENCY_AIRSPEED_EKF_FETCH" value="50" description="Airspeed periodic fetch frequency"/>
+    <define name="PERIODIC_FREQUENCY_AIRSPEED_EKF" value="50" description="Airspeed periodic frequency"/>
+    <define name="PERIODIC_FREQUENCY_AIRSPEED_EKF_FETCH" value="100" description="Airspeed periodic fetch frequency"/>
   </doc>
   <settings>
     <dl_settings>
@@ -19,7 +19,7 @@
         <dl_setting min="1E-9" max="1E-2" step="1E-8" var="ekf_aw_params.R_V_gnd" module="meteo/ekf_aw" shortname="R V_gnd" handler="update_R_V_gnd"/>
         <dl_setting min="1E-9" max="1E-2" step="1E-8" var="ekf_aw_params.R_accel_filt" module="meteo/ekf_aw" shortname="R Accel Filt" handler="update_R_accel_filt"/>
         <dl_setting min="1E-9" max="1E-2" step="1E-8" var="ekf_aw_params.R_V_pitot" module="meteo/ekf_aw" shortname="R Pitot" handler="update_R_V_pitot"/>
-        <dl_setting min="-10" max="10" step="0.1" var="ekf_aw.reset" module="meteo/ekf_aw_wrapper" shortname="reset" handler="reset"/>
+        <dl_setting min="0" max="1" step="1" var="ekf_aw.reset" module="meteo/ekf_aw_wrapper" shortname="reset" handler="reset"/>
         <dl_setting min="-10" max="10" step="0.1" var="ekf_aw.wind_guess.x" module="meteo/ekf_aw_wrapper" shortname="Wind Guess N" handler="set_wind_N"/>
         <dl_setting min="-10" max="10" step="0.1" var="ekf_aw.wind_guess.y" module="meteo/ekf_aw_wrapper" shortname="Wind Guess E" handler="set_wind_E"/>
         <dl_setting min="-10" max="10" step="0.1" var="ekf_aw.wind_guess.z" module="meteo/ekf_aw_wrapper" shortname="Wind Guess D" handler="set_wind_D"/>        
@@ -30,8 +30,8 @@
     <file name="ekf_aw_wrapper.h"/>
   </header>
   <init fun="ekf_aw_wrapper_init()"/>
-  <periodic fun="ekf_aw_wrapper_periodic()" freq="20."  autorun="TRUE"/>
-  <periodic fun="ekf_aw_wrapper_fetch()" freq="50."  autorun="TRUE"/>
+  <periodic fun="ekf_aw_wrapper_periodic()" freq="50."  autorun="TRUE"/>
+  <periodic fun="ekf_aw_wrapper_fetch()" freq="100."  autorun="TRUE"/>
   <makefile target="ap|nps">
     <file name="ekf_aw.cpp"/>
     <file name="ekf_aw_wrapper.c"/>
