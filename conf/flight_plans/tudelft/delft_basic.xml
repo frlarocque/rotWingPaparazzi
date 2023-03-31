@@ -17,6 +17,8 @@
     <waypoint name="p4" x="4.9" y="-34.4"/>
     <waypoint name="CAM" x="14.2" y="-29.4"/>
     <waypoint name="TD" x="5.6" y="-10.9"/>
+    <waypoint name="p5" x="-10" y="-35"/>
+    <waypoint name="p6" x="-10" y="35"/>
   </waypoints>
   <exceptions>
     <!-- RC-Loss -->
@@ -93,6 +95,20 @@
         <go from="p2" hmode="route" wp="p3" approaching_time="0.5"/>
         <go from="p3" hmode="route" wp="p4" approaching_time="0.5"/>
         <go from="p4" hmode="route" wp="p1" approaching_time="0.5"/>
+      </while>
+      <deroute block="stay_p1"/>
+    </block>
+    <block name="sideslip_route" pre_call="nav_set_heading_deg(nav_radius)">
+      <while cond="TRUE">
+        <go from="p5" hmode="route" wp="p6" approaching_time="0.5"/>
+        <go from="p6" hmode="route" wp="p5" approaching_time="0.5"/>
+      </while>
+      <deroute block="stay_p1"/>
+    </block>
+    <block name="line_route" pre_call="nav_set_heading_towards_target()">
+      <while cond="TRUE">
+        <go from="p5" hmode="route" wp="p6" approaching_time="0.5"/>
+        <go from="p6" hmode="route" wp="p5" approaching_time="0.5"/>
       </while>
       <deroute block="stay_p1"/>
     </block>
