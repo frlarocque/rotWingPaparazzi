@@ -16,7 +16,13 @@ static void send_airspeed_wind_ekf(struct transport_tx *trans, struct link_devic
                               &ekf_aw.V_body.z,
                               &ekf_aw.wind.x,
                               &ekf_aw.wind.y,
-                              &ekf_aw.wind.z);
+                              &ekf_aw.wind.z,
+                              &ekf_aw.offset.x,
+                              &ekf_aw.offset.y,
+                              &ekf_aw.offset.z,
+                              &ekf_aw.acc_filt.x,
+                              &ekf_aw.acc_filt.y,
+                              &ekf_aw.acc_filt.z);
 }
 #endif
 
@@ -125,6 +131,7 @@ void ekf_aw_wrapper_periodic(void){
 
   ekf_aw.V_body = ekf_aw_get_speed_body();
   ekf_aw.wind = ekf_aw_get_wind_ned();
+  ekf_aw.offset = ekf_aw_get_offset();
 
 };
 

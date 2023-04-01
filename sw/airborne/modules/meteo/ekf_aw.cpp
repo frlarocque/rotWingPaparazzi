@@ -488,8 +488,6 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
   //std::cout << "K V_body Accel_filt:\n" << K.block<3,3>(0,3) * eawp.innovations.accel_filt << std::endl;
   //std::cout << "K:\n" << K << std::endl;
 
-  // Correct states using
-
   // State update using V_gnd
   eawp.state.V_body  += K.block<3,3>(0,0) * eawp.innovations.V_gnd; 
   eawp.state.wind    += K.block<3,3>(3,0) * eawp.innovations.V_gnd; 
@@ -530,10 +528,28 @@ struct NedCoor_f ekf_aw_get_wind_ned(void)
   return w;
 }
 
+struct NedCoor_f ekf_aw_get_offset(void) // TO DO: use right type instead of NEDCOORD_f
+{
+  const struct NedCoor_f w = {
+    .x = eawp.state.offset(0),
+    .y = eawp.state.offset(1),
+    .z = eawp.state.offset(2)
+  };
+  return w;
+}
+
 void ekf_aw_set_wind(struct NedCoor_f *s)
 {
   eawp.state.wind(0) = s->x;
   eawp.state.wind(1) = s->y;
   eawp.state.wind(2) = s->z;
   //printf("Wind was set to %f %f %f",eawp.state.wind(0),eawp.state.wind(1),eawp.state.wind(2));
+}
+
+void ekf_aw_set_offset(struct NedCoor_f *s)
+{
+  eawp.state.offset(0) = s->x;
+  eawp.state.offset(1) = s->y;
+  eawp.state.offset(2) = s->z;
+  printf("Offset was set to %f %f %f",eawp.state.offset(0),eawp.state.offset(1),eawp.state.offset(2));
 }

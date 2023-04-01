@@ -50,10 +50,12 @@ extern void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, str
 // Getter/Setter functions
 extern struct NedCoor_f ekf_aw_get_speed_body(void);
 extern struct NedCoor_f ekf_aw_get_wind_ned(void);
+extern struct NedCoor_f ekf_aw_get_offset(void);
 
 // Settings handlers
 extern void ekf_aw_update_params(void);
 extern void ekf_aw_set_wind(struct NedCoor_f *s);
+extern void ekf_aw_set_offset(struct NedCoor_f *s);
 
 
 #define ekf_aw_update_Q_accel(_v) { \

@@ -13,6 +13,7 @@ struct ekfAw {
   // States
   struct NedCoor_f wind;
   struct NedCoor_f V_body;
+  struct NedCoor_f offset;
 
   // Inputs
   struct FloatVect3 acc;  ///< Last accelerometer measurements
@@ -32,6 +33,7 @@ struct ekfAw {
   // Other
   bool reset;
   struct NedCoor_f wind_guess;
+  struct NedCoor_f offset_guess;
 
 };
 
@@ -62,6 +64,21 @@ extern struct ekfAw ekf_aw;
 #define ekf_aw_wrapper_set_wind_D(_v) { \
   ekf_aw.wind_guess.z = _v;  \
   ekf_aw_set_wind(&ekf_aw.wind_guess);                  \
+}
+
+#define ekf_aw_wrapper_set_offset_x(_v) { \
+  ekf_aw.offset_guess.x = _v;  \
+  ekf_aw_set_offset(&ekf_aw.offset_guess);                  \
+}
+
+#define ekf_aw_wrapper_set_offset_y(_v) { \
+  ekf_aw.offset_guess.y = _v;  \
+  ekf_aw_set_offset(&ekf_aw.offset_guess);                  \
+}
+
+#define ekf_aw_wrapper_set_offset_z(_v) { \
+  ekf_aw.offset_guess.z = _v;  \
+  ekf_aw_set_offset(&ekf_aw.offset_guess);                  \
 }
 
 #endif /* EKF_AW_WRAPPER_H */
