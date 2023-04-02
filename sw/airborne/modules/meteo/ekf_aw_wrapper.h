@@ -20,6 +20,7 @@ struct ekfAw {
   struct FloatRates gyro;   ///< Last gyroscope measurements
   struct FloatEulers euler; /// Euler angles
   
+  float last_RPM_hover[4]; // Value obtained from ABI Callback
   float RPM_hover[4]; /// Hover motor RPM
   float RPM_pusher; /// Pusher motor RPM
   float skew; /// Skew

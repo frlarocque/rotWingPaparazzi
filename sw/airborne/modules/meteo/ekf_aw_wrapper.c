@@ -6,6 +6,8 @@
 #include "filters/low_pass_filter.h"
 #include "math/pprz_algebra.h"
 
+#include "modules/core/abi.h"
+
 #if PERIODIC_TELEMETRY
 #include "modules/datalink/telemetry.h"
 static void send_airspeed_wind_ekf(struct transport_tx *trans, struct link_device *dev)
@@ -25,6 +27,9 @@ static void send_airspeed_wind_ekf(struct transport_tx *trans, struct link_devic
                               &ekf_aw.acc_filt.z);
 }
 #endif
+
+abi_event RPM_ev;
+static void rpm_cb(uint8_t sender_id __attribute__((unused)), uint16_t * rpm, uint8_t num_act);
 
 // Filter struct
 struct ekfAw ekf_aw; // Local wrapper
@@ -48,6 +53,7 @@ Butterworth2LowPass filt_skew;
 Butterworth2LowPass filt_elevator_pprz;
 Butterworth2LowPass filt_airspeed_pitot;
 
+float time_of_rpm = 0.0;
 
 #ifndef PERIODIC_FREQUENCY_AIRSPEED_EKF_FETCH
 #define PERIODIC_FREQUENCY_AIRSPEED_EKF_FETCH 50
@@ -62,6 +68,8 @@ void ekf_aw_wrapper_init(void){
   float sample_time = 1.0 / PERIODIC_FREQUENCY_AIRSPEED_EKF_FETCH;
   float tau_low = 1.0 / (2.0 * M_PI * tau_filter_low);
   float tau_high = 1.0 / (2.0 * M_PI * tau_filter_high);
+
+  ekf_aw.last_RPM_hover[4] = (0,0,0,0);
 
   for(int8_t i=0; i<3; i++) {
     init_butterworth_2_low_pass(&filt_groundspeed[i], tau_high, sample_time, 0.0); // Init filters groundspeed
@@ -89,6 +97,10 @@ void ekf_aw_wrapper_init(void){
   ekf_aw_init();
 
   printf("Init Airspeed EKF Module\n");
+
+  //*AbiBindMsgRPM(RPM_ID, &RPM_ev, rpm_cb);*/
+  AbiBindMsgRPM(RPM_SENSOR_ID, &RPM_ev, rpm_cb); // TO DO: test if it works with VSQP
+
 };
 
 void ekf_aw_wrapper_periodic(void){
@@ -167,10 +179,10 @@ void ekf_aw_wrapper_fetch(void){
 
 
   // TO BE MODIFIED FOR EACH VEHICLE
-  update_butterworth_2_low_pass(&filt_hover_prop_rpm[0], 0);
-  update_butterworth_2_low_pass(&filt_hover_prop_rpm[1], 0);
-  update_butterworth_2_low_pass(&filt_hover_prop_rpm[2], 0);
-  update_butterworth_2_low_pass(&filt_hover_prop_rpm[3], 0);
+  update_butterworth_2_low_pass(&filt_hover_prop_rpm[0], ekf_aw.last_RPM_hover[0]);
+  update_butterworth_2_low_pass(&filt_hover_prop_rpm[1], ekf_aw.last_RPM_hover[1]);
+  update_butterworth_2_low_pass(&filt_hover_prop_rpm[2], ekf_aw.last_RPM_hover[2]);
+  update_butterworth_2_low_pass(&filt_hover_prop_rpm[3], ekf_aw.last_RPM_hover[3]);
 
   update_butterworth_2_low_pass(&filt_pusher_prop_rpm, 0);
 
@@ -179,4 +191,20 @@ void ekf_aw_wrapper_fetch(void){
   update_butterworth_2_low_pass(&filt_elevator_pprz, 0);
 
   update_butterworth_2_low_pass(&filt_airspeed_pitot, 0);
+};
+
+/**
+ * ABI callback that obtains the RPM from a module
+  */
+static void rpm_cb(uint8_t sender_id __attribute__((unused)), uint16_t * rpm, uint8_t num_act)
+{
+  int8_t i;
+  for (i = 0; i < num_act; i++) {
+    ekf_aw.last_RPM_hover[i] = (rpm[i] - get_servo_min(i));
+    ekf_aw.last_RPM_hover[i] *= (MAX_PPRZ / (float)(get_servo_max(i) - get_servo_min(i)));
+    Bound(ekf_aw.last_RPM_hover[i], 0, MAX_PPRZ);
+  }
+  time_of_rpm = get_sys_time_float();
+  printf("Here");
+  //printf("Got RPM of %f",*rpm);
 };
