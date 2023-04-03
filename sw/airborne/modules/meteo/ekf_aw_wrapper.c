@@ -8,6 +8,8 @@
 
 #include "modules/core/abi.h"
 
+#include "autopilot.h"
+
 #if PERIODIC_TELEMETRY
 #include "modules/datalink/telemetry.h"
 static void send_airspeed_wind_ekf(struct transport_tx *trans, struct link_device *dev)
@@ -22,9 +24,9 @@ static void send_airspeed_wind_ekf(struct transport_tx *trans, struct link_devic
                               &ekf_aw.offset.x,
                               &ekf_aw.offset.y,
                               &ekf_aw.offset.z,
-                              &ekf_aw.acc_filt.x,
-                              &ekf_aw.acc_filt.y,
-                              &ekf_aw.acc_filt.z);
+                              &ekf_aw.Vg_NED.x,
+                              &ekf_aw.Vg_NED.y,
+                              &ekf_aw.Vg_NED.z);
 }
 #endif
 
@@ -36,10 +38,16 @@ struct ekfAw ekf_aw; // Local wrapper
 
 // Define settings to change filter tau value
 float tau_filter_high = 10.;
-float tau_filter_low = 0.5;
+float tau_filter_low = 0.2;
 
 // Bool Reset EKF Filter
 bool reset_filter = false;
+
+const struct NedCoor_f zero_speed = {
+    .x = 0,
+    .y = 0,
+    .z = 0
+  };
 
 // Define filter arrays
 Butterworth2LowPass filt_groundspeed[3];
@@ -69,8 +77,6 @@ void ekf_aw_wrapper_init(void){
   float tau_low = 1.0 / (2.0 * M_PI * tau_filter_low);
   float tau_high = 1.0 / (2.0 * M_PI * tau_filter_high);
 
-  ekf_aw.last_RPM_hover[4] = (0,0,0,0);
-
   for(int8_t i=0; i<3; i++) {
     init_butterworth_2_low_pass(&filt_groundspeed[i], tau_high, sample_time, 0.0); // Init filters groundspeed
     init_butterworth_2_low_pass(&filt_acc[i], tau_high, sample_time, 0.0); // Init filters Accelerations
@@ -82,6 +88,7 @@ void ekf_aw_wrapper_init(void){
   // Init filters Hover Prop
   for(int8_t i=0; i<4; i++) {
     init_butterworth_2_low_pass(&filt_hover_prop_rpm[i], tau_low, sample_time, 0.0);
+    ekf_aw.last_RPM_hover[i] = 0;
   }
 
   init_butterworth_2_low_pass(&filt_pusher_prop_rpm, tau_low, sample_time, 0.0); // Init filters Pusher Prop
@@ -96,7 +103,7 @@ void ekf_aw_wrapper_init(void){
   // init filter
   ekf_aw_init();
 
-  printf("Init Airspeed EKF Module\n");
+  //printf("Init Airspeed EKF Module\n");
 
   //*AbiBindMsgRPM(RPM_ID, &RPM_ev, rpm_cb);*/
   AbiBindMsgRPM(RPM_SENSOR_ID, &RPM_ev, rpm_cb); // TO DO: test if it works with VSQP
@@ -117,7 +124,8 @@ void ekf_aw_wrapper_periodic(void){
 
   ekf_aw.euler.phi = filt_euler[0].o[0];
   ekf_aw.euler.theta = filt_euler[1].o[0];
-  ekf_aw.euler.psi = filt_euler[2].o[0];
+  //ekf_aw.euler.psi = filt_euler[2].o[0];
+  ekf_aw.euler.psi = stateGetNedToBodyEulers_f()->psi; // TO DO: implement circular wrap filter for psi angle
 
   for(int8_t i=0; i<4; i++) {
   ekf_aw.RPM_hover[i] = filt_hover_prop_rpm[i].o[0];
@@ -139,7 +147,13 @@ void ekf_aw_wrapper_periodic(void){
 
   float sample_time = 1.0 / PERIODIC_FREQUENCY_AIRSPEED_EKF_FETCH;
 
-  ekf_aw_propagate(&ekf_aw.acc,&ekf_aw.gyro, &ekf_aw.euler, &ekf_aw.RPM_pusher,&ekf_aw.RPM_hover, &ekf_aw.skew, &ekf_aw.elevator_angle, &ekf_aw.Vg_NED, &ekf_aw.acc_filt, &ekf_aw.V_pitot,sample_time);
+  if (autopilot_in_flight()){
+    ekf_aw_propagate(&ekf_aw.acc,&ekf_aw.gyro, &ekf_aw.euler, &ekf_aw.RPM_pusher,ekf_aw.RPM_hover, &ekf_aw.skew, &ekf_aw.elevator_angle, &ekf_aw.Vg_NED, &ekf_aw.acc_filt, &ekf_aw.V_pitot,sample_time);
+  }
+  else{
+    // Set body velocity to 0 when landed
+    ekf_aw_set_speed_body(&zero_speed);
+  };
 
   ekf_aw.V_body = ekf_aw_get_speed_body();
   ekf_aw.wind = ekf_aw_get_wind_ned();
@@ -175,7 +189,7 @@ void ekf_aw_wrapper_fetch(void){
 
   update_butterworth_2_low_pass(&filt_euler[0], stateGetNedToBodyEulers_f()->phi);
   update_butterworth_2_low_pass(&filt_euler[1], stateGetNedToBodyEulers_f()->theta);
-  update_butterworth_2_low_pass(&filt_euler[2], stateGetNedToBodyEulers_f()->psi);
+  //update_butterworth_2_low_pass(&filt_euler[2], stateGetNedToBodyEulers_f()->psi); // TO DO: implement circular wrap filter for psi angle
 
 
   // TO BE MODIFIED FOR EACH VEHICLE
@@ -205,6 +219,6 @@ static void rpm_cb(uint8_t sender_id __attribute__((unused)), uint16_t * rpm, ui
     Bound(ekf_aw.last_RPM_hover[i], 0, MAX_PPRZ);
   }
   time_of_rpm = get_sys_time_float();
-  printf("Here");
+  //printf("Here");
   //printf("Got RPM of %f",*rpm);
 };

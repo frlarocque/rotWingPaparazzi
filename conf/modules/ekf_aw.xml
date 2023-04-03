@@ -13,8 +13,8 @@
     <dl_settings>
       <dl_settings name="EKF_Airspeed_Wind">
         <dl_setting min="1E-1" max="8" step="1E-1" var="ekf_aw_params.vehicle_mass" module="meteo/ekf_aw" shortname="Vehicle Mass"/>
-        <dl_setting min="-1" max="0" step="1E-3" var="ekf_aw_params.k1_drag" module="meteo/ekf_aw" shortname="k_drag_lin"/>
-        <dl_setting min="-1" max="0" step="1E-3" var="ekf_aw_params.k2_drag" module="meteo/ekf_aw" shortname="k_drag_quad"/>
+        <dl_setting min="-1" max="0" step="1E-3" var="ekf_aw_params.k_fx_drag[0]" module="meteo/ekf_aw" shortname="k_drag_lin"/>
+        <dl_setting min="-1" max="0" step="1E-3" var="ekf_aw_params.k_fx_drag[1]" module="meteo/ekf_aw" shortname="k_drag_quad"/>
         <dl_setting min="-5E-1" max="0" step="1E-3" var="ekf_aw_params.k_beta" module="meteo/ekf_aw" shortname="k_beta"/>
         <dl_setting min="1E-9" max="1E-2" step="1E-8" var="ekf_aw_params.Q_accel" module="meteo/ekf_aw" shortname="Q accel" handler="update_Q_accel"/>
         <dl_setting min="1E-9" max="1E-2" step="1E-8" var="ekf_aw_params.Q_gyro" module="meteo/ekf_aw" shortname="Q gyro" handler="update_Q_gyro"/>

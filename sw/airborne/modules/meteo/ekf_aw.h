@@ -23,15 +23,25 @@ struct ekfAwParameters {
   float R_V_pitot;      ///< airspeed measurement noise
 
   // Model Based Parameters
-  float vehicle_mass;
-  float k_beta;
+    float vehicle_mass;
+    
+    // X Axis
+    float k_fx_drag[2]; // Temporary setting for fuselage + hover prop
+    float k_fx_fuselage[4];
+    float k_fx_hover[2];
+    float k_fx_wing[5];
+    float k_fx_push[3];
+    float k_fx_elev[3];
 
-  float k1_drag;
-  float k2_drag;
+    // Y Axis
+    float k_beta;
+    // TO DO: add coefficients for sideforce due to skewed wing
 
-  float k1_fx_push;
-  float k2_fx_push;
-  float k3_fx_push;
+    // Z Axis
+    float k_fz_fuselage[4];
+    float k_fz_wing[4];
+    float k_fz_hover[4];
+    float k_fz_elev[2];
 
   // Other options
   bool wing_installed; ///< Include wing in calculations
@@ -54,6 +64,7 @@ extern struct NedCoor_f ekf_aw_get_offset(void);
 
 // Settings handlers
 extern void ekf_aw_update_params(void);
+extern void ekf_aw_set_speed_body(struct NedCoor_f *s);
 extern void ekf_aw_set_wind(struct NedCoor_f *s);
 extern void ekf_aw_set_offset(struct NedCoor_f *s);
 
