@@ -34,7 +34,9 @@ struct ekfAwParameters {
     float k_fx_elev[3];
 
     // Y Axis
-    float k_beta;
+    bool use_kv;
+    float k_fy_beta;
+    float k_fy_v;
     // TO DO: add coefficients for sideforce due to skewed wing
 
     // Z Axis
