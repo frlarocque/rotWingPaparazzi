@@ -15,13 +15,15 @@
         <dl_setting min="1E-1" max="8" step="1E-1" var="ekf_aw_params.vehicle_mass" module="meteo/ekf_aw" shortname="Vehicle Mass"/>
         <dl_setting min="-1" max="0" step="1E-3" var="ekf_aw_params.k_fx_drag[0]" module="meteo/ekf_aw" shortname="k_drag_lin"/>
         <dl_setting min="-1" max="0" step="1E-3" var="ekf_aw_params.k_fx_drag[1]" module="meteo/ekf_aw" shortname="k_drag_quad"/>
-        <dl_setting min="-5E-1" max="0" step="1E-3" var="ekf_aw_params.k_beta" module="meteo/ekf_aw" shortname="k_beta"/>
+        <dl_setting min="-5E-2" max="0" step="1E-4" var="ekf_aw_params.k_beta" module="meteo/ekf_aw" shortname="k_beta"/>
         <dl_setting min="1E-9" max="1E-2" step="1E-8" var="ekf_aw_params.Q_accel" module="meteo/ekf_aw" shortname="Q accel" handler="update_Q_accel"/>
         <dl_setting min="1E-9" max="1E-2" step="1E-8" var="ekf_aw_params.Q_gyro" module="meteo/ekf_aw" shortname="Q gyro" handler="update_Q_gyro"/>
         <dl_setting min="1E-9" max="1E-2" step="1E-8" var="ekf_aw_params.Q_mu" module="meteo/ekf_aw" shortname="Q wind" handler="update_Q_mu"/>
         <dl_setting min="1E-9" max="1E-2" step="1E-8" var="ekf_aw_params.Q_k" module="meteo/ekf_aw" shortname="Q offset" handler="update_Q_k"/>
         <dl_setting min="1E-9" max="1E-2" step="1E-8" var="ekf_aw_params.R_V_gnd" module="meteo/ekf_aw" shortname="R V_gnd" handler="update_R_V_gnd"/>
-        <dl_setting min="1E-9" max="1E-2" step="1E-8" var="ekf_aw_params.R_accel_filt" module="meteo/ekf_aw" shortname="R Accel Filt" handler="update_R_accel_filt"/>
+        <dl_setting min="1E-9" max="1E-2" step="1E-8" var="ekf_aw_params.R_accel_filt[0]" module="meteo/ekf_aw" shortname="R Accel Filt x" handler="update_R_accel_filt_x"/>
+        <dl_setting min="1E-9" max="1E-2" step="1E-8" var="ekf_aw_params.R_accel_filt[1]" module="meteo/ekf_aw" shortname="R Accel Filt y" handler="update_R_accel_filt_y"/>
+        <dl_setting min="1E-9" max="1E-2" step="1E-8" var="ekf_aw_params.R_accel_filt[2]" module="meteo/ekf_aw" shortname="R Accel Filt z" handler="update_R_accel_filt_z"/>
         <dl_setting min="1E-9" max="1E-2" step="1E-8" var="ekf_aw_params.R_V_pitot" module="meteo/ekf_aw" shortname="R Pitot" handler="update_R_V_pitot"/>
         <dl_setting min="0" max="1" step="1" var="ekf_aw.reset" module="meteo/ekf_aw_wrapper" shortname="reset" handler="reset"/>
         <dl_setting min="-10" max="10" step="0.1" var="ekf_aw.wind_guess.x" module="meteo/ekf_aw_wrapper" shortname="Wind Guess N" handler="set_wind_N"/>

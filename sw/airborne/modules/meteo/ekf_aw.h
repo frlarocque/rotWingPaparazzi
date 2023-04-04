@@ -19,7 +19,7 @@ struct ekfAwParameters {
 
   // R
   float R_V_gnd;      ///< speed measurement noise
-  float R_accel_filt; ///< filtered accel measurement noise
+  float R_accel_filt[3]; ///< filtered accel measurement noise
   float R_V_pitot;      ///< airspeed measurement noise
 
   // Model Based Parameters
@@ -94,8 +94,18 @@ extern void ekf_aw_set_offset(struct NedCoor_f *s);
   ekf_aw_update_params(); \
 }
 
-#define ekf_aw_update_R_accel_filt(_v) { \
-  ekf_aw_params.R_accel_filt = _v; \
+#define ekf_aw_update_R_accel_filt_x(_v) { \
+  ekf_aw_params.R_accel_filt[0] = _v; \
+  ekf_aw_update_params(); \
+}
+
+#define ekf_aw_update_R_accel_filt_y(_v) { \
+  ekf_aw_params.R_accel_filt[1] = _v; \
+  ekf_aw_update_params(); \
+}
+
+#define ekf_aw_update_R_accel_filt_z(_v) { \
+  ekf_aw_params.R_accel_filt[2] = _v; \
   ekf_aw_update_params(); \
 }
 

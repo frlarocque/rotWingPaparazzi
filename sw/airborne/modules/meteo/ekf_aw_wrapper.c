@@ -26,7 +26,10 @@ static void send_airspeed_wind_ekf(struct transport_tx *trans, struct link_devic
                               &ekf_aw.offset.z,
                               &ekf_aw.Vg_NED.x,
                               &ekf_aw.Vg_NED.y,
-                              &ekf_aw.Vg_NED.z);
+                              &ekf_aw.Vg_NED.z,
+                              &ekf_aw.acc_filt.x,
+                              &ekf_aw.acc_filt.y,
+                              &ekf_aw.acc_filt.z);
 }
 #endif
 
