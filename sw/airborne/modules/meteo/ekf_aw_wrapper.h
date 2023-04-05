@@ -32,6 +32,11 @@ struct ekfAw {
   struct FloatVect3 acc_filt;  ///< Last accelerometer measurements
   float V_pitot; /// Pitot tube airspeed
 
+  // Innovation
+  struct FloatVect3 innov_V_gnd;
+  struct FloatVect3 innov_acc_filt;
+  float innov_V_pitot;
+
   // Other
   bool reset;
   struct NedCoor_f wind_guess;

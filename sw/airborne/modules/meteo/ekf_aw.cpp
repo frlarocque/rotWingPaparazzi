@@ -157,6 +157,9 @@ struct ekfAwPrivate {
 #ifndef EKF_AW_USE_BETA
 #define EKF_AW_USE_BETA false
 #endif
+#ifndef EKF_AW_PROPAGATE_OFFSET
+#define EKF_AW_PROPAGATE_OFFSET false
+#endif
 
 // Model Based Parameters
 #ifndef EKF_AW_VEHICLE_MASS
@@ -168,7 +171,7 @@ struct ekfAwPrivate {
 #define EKF_AW_K1_FX_DRAG 0.f
 #endif
 #ifndef EKF_AW_K2_FX_DRAG
-#define EKF_AW_K2_FX_DRAG -1.2E-2f
+#define EKF_AW_K2_FX_DRAG -12E-3f
 #endif
 
 #ifndef EKF_AW_K1_FX_FUSELAGE
@@ -390,8 +393,8 @@ void ekf_aw_init(void)
   ekf_aw_params.R_V_gnd = EKF_AW_R_V_gnd;      ///< speed measurement noise
   ekf_aw_params.R_accel_filt[0] = EKF_AW_R_accel_filt_x; ekf_aw_params.R_accel_filt[1] = EKF_AW_R_accel_filt_y; ekf_aw_params.R_accel_filt[2] = EKF_AW_R_accel_filt_z; ///< filtered accel measurement noise
   ekf_aw_params.R_V_pitot = EKF_AW_R_V_pitot;      ///< airspeed measurement noise
-  ekf_aw_params.wing_installed = EKF_AW_WING_INSTALLED;
   ekf_aw_params.use_model = EKF_AW_USE_MODEL_BASED;
+  ekf_aw_params.propagate_offset = EKF_AW_PROPAGATE_OFFSET;
 
   // Model based parameters 
     ekf_aw_params.vehicle_mass = EKF_AW_VEHICLE_MASS;
@@ -680,7 +683,7 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
   //std::cout << "V_body_gnd:\n" << quat.toRotationMatrix() * eawp.state.V_body << std::endl;
   //std::cout << "V_gnd:\n" << eawp.measurements.V_gnd << std::endl;
   //std::cout << "Innov V_gnd:\n" << eawp.innovations.V_gnd << std::endl;
-  //std::cout << "Innov accel_filt:\n" << eawp.innovations.accel_filt << std::endl;
+  std::cout << "Innov accel_filt:\n" << eawp.innovations.accel_filt << std::endl;
   //std::cout << "Euler:\n" << eawp.inputs.euler << std::endl;
 
   /////////////////////////////////
@@ -725,14 +728,15 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
     
     // Hover prop contribution
     G(3,0) += (2*ekf_aw_params.k_fx_hover[0]*sign_u*u + (0.5*ekf_aw_params.k_fx_hover[1]*sign_u*hover_RPM_mean*hover_RPM_mean)/sqrt(abs(u ==0 ? 1E-5 : u)))/ekf_aw_params.vehicle_mass; // TO DO: Verify the abs()
-  
+
+    if (EKF_AW_WING_INSTALLED){
     // Wing contribution
     float temp_2 = ekf_aw_params.k_fx_wing[0] + ekf_aw_params.k_fx_wing[4]*eawp.inputs.skew + (sin_skew*sin_skew + ekf_aw_params.k_fx_wing[3])*(ekf_aw_params.k_fx_wing[2]*aoa*aoa + ekf_aw_params.k_fx_wing[1]*aoa);
     float temp_3 = sin_skew*sin_skew + ekf_aw_params.k_fx_wing[3];
     G(3,0) += (2*u*temp_2 + temp_3*(ekf_aw_params.k_fx_wing[1]*diff_alpha_u + 2*ekf_aw_params.k_fx_wing[2]*aoa*diff_alpha_u)*V_a*V_a)/ekf_aw_params.vehicle_mass;
     G(3,1) += (2*v*temp_2)/ekf_aw_params.vehicle_mass;
     G(3,2) += (2*w*temp_2 + temp_3*(ekf_aw_params.k_fx_wing[1]*diff_alpha_w + 2*ekf_aw_params.k_fx_wing[2]*atan(w/u)*diff_alpha_w)*V_a*V_a)/ekf_aw_params.vehicle_mass;
-    
+    }
     // Elevator contribution
     float temp_4 = ekf_aw_params.k_fx_elev[2]*eawp.inputs.elevator_angle*eawp.inputs.elevator_angle + ekf_aw_params.k_fx_elev[1]*eawp.inputs.elevator_angle + ekf_aw_params.k_fx_elev[0];
     G(3,0) += (2*u*temp_4)/ekf_aw_params.vehicle_mass;
@@ -770,11 +774,13 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
     G(5,1) += (2*v*temp_5)/ekf_aw_params.vehicle_mass;
     G(5,2) += (2*w*temp_5 + (ekf_aw_params.k_fz_fuselage[2]*diff_alpha_w + 2*ekf_aw_params.k_fz_fuselage[3]*aoa*diff_alpha_w)*V_a*V_a)/ekf_aw_params.vehicle_mass;
 
+    if (EKF_AW_WING_INSTALLED){
     // Wing contribution
     G(5,0) += (2*u*(sin_skew*sin_skew + ekf_aw_params.k_fz_wing[3])*(ekf_aw_params.k_fz_wing[0] + ekf_aw_params.k_fz_wing[2]*aoa*aoa + ekf_aw_params.k_fz_wing[1]*aoa) - (sin_skew*sin_skew + ekf_aw_params.k_fz_wing[3])*(-ekf_aw_params.k_fz_wing[1]*diff_alpha_u + -2*ekf_aw_params.k_fz_wing[2]*aoa*diff_alpha_u)*V_a*V_a)/ekf_aw_params.vehicle_mass;
     G(5,1) += (2*v*(sin_skew*sin_skew + ekf_aw_params.k_fz_wing[3])*(ekf_aw_params.k_fz_wing[0] + ekf_aw_params.k_fz_wing[2]*aoa*aoa + ekf_aw_params.k_fz_wing[1]*aoa)/ekf_aw_params.vehicle_mass);
     G(5,2) += ((sin_skew*sin_skew + ekf_aw_params.k_fz_wing[3])*(ekf_aw_params.k_fz_wing[1]*diff_alpha_w + 2*ekf_aw_params.k_fz_wing[2]*aoa*diff_alpha_w)*V_a*V_a + 2*w*(sin_skew*sin_skew + ekf_aw_params.k_fz_wing[3])*(ekf_aw_params.k_fz_wing[0] + ekf_aw_params.k_fz_wing[2]*aoa*aoa + ekf_aw_params.k_fz_wing[1]*aoa))/ekf_aw_params.vehicle_mass;
-    
+    }
+
     // Elevator contribution
     float temp_6 = ekf_aw_params.k_fz_elev[1]*eawp.inputs.elevator_angle + ekf_aw_params.k_fz_elev[0];
     G(5,0) += (2*u*temp_6)/ekf_aw_params.vehicle_mass;
@@ -807,18 +813,26 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
 
     // State update using V_gnd
     eawp.state.V_body  += K.block<3,3>(0,0) * eawp.innovations.V_gnd; 
-    eawp.state.wind    += K.block<3,3>(3,0) * eawp.innovations.V_gnd; 
-    eawp.state.offset  += K.block<3,3>(6,0) * eawp.innovations.V_gnd;
-
+    eawp.state.wind    += K.block<3,3>(3,0) * eawp.innovations.V_gnd;
+    if (ekf_aw_params.propagate_offset){
+      eawp.state.offset  += K.block<3,3>(6,0) * eawp.innovations.V_gnd;
+    } 
+    
     // State update using a_y_filt
     eawp.state.V_body  += K.block<3,3>(0,3) * eawp.innovations.accel_filt; 
-    eawp.state.wind    += K.block<3,3>(3,3) * eawp.innovations.accel_filt; 
-    eawp.state.offset  += K.block<3,3>(6,3) * eawp.innovations.accel_filt;
+    eawp.state.wind    += K.block<3,3>(3,3) * eawp.innovations.accel_filt;
+    if (ekf_aw_params.propagate_offset){
+      eawp.state.offset  += K.block<3,3>(6,3) * eawp.innovations.accel_filt;
+    }
+    
 
     // State update using V_pitot (if available)
     eawp.state.V_body  += K.block<3,1>(0,3) * eawp.innovations.V_pitot; 
     eawp.state.wind    += K.block<3,1>(3,3) * eawp.innovations.V_pitot; 
-    eawp.state.offset  += K.block<3,1>(6,3) * eawp.innovations.V_pitot;
+    if (ekf_aw_params.propagate_offset){
+      eawp.state.offset  += K.block<3,1>(6,3) * eawp.innovations.V_pitot;
+    }
+    
 
     // Covariance update
     eawp.P = (EKF_Aw_Cov::Identity() - K * G) * eawp.P;
@@ -872,6 +886,31 @@ struct ekfHealth ekf_aw_get_health(void)
     .healthy = eawp.health.healthy,
     .crashes_n = eawp.health.crashes_n
   };
+  return w;
+}
+
+struct FloatVect3 ekf_aw_get_innov_V_gnd(void)
+{
+  const struct FloatVect3 w = {
+    .x = eawp.innovations.V_gnd(0),
+    .y = eawp.innovations.V_gnd(1),
+    .z = eawp.innovations.V_gnd(2)
+  };
+  return w;
+}
+struct FloatVect3 ekf_aw_get_innov_accel_filt(void)
+{
+  const struct FloatVect3 w = {
+    .x = eawp.innovations.accel_filt(0),
+    .y = eawp.innovations.accel_filt(1),
+    .z = eawp.innovations.accel_filt(2)
+  };
+  return w;
+}
+
+float ekf_aw_get_innov_V_pitot(void)
+{
+  const float w = eawp.innovations.V_pitot;
   return w;
 }
 

@@ -8,28 +8,53 @@
     </description>
     <define name="PERIODIC_FREQUENCY_AIRSPEED_EKF" value="50" description="Airspeed periodic frequency"/>
     <define name="PERIODIC_FREQUENCY_AIRSPEED_EKF_FETCH" value="100" description="Airspeed periodic fetch frequency"/>
+    <configure name="EKF_AW_Q_accel" value="2.5E-3" description="Accel process noise"/>
+    <configure name="EKF_AW_Q_gyro" value="5.E-6" description="Gyro process noise"/>
+    <configure name="EKF_AW_Q_mu" value="3.E-6" description="Wind process noise"/>
+    <configure name="EKF_AW_Q_offset" value="1.E-10" description="Offset process noise"/>
+
+    <configure name="EKF_AW_R_V_gnd" value="1.E-6" description="GPS Velocity measurement noise"/>
+    <configure name="EKF_AW_R_accel_filt_x" value="1.E-5" description="Filtered x accel measurement noise"/>
+    <configure name="EKF_AW_R_accel_filt_y" value="1.E-5" description="Filtered y accel measurement noise"/>
+    <configure name="EKF_AW_R_accel_filt_z" value="1.E-5" description="Filtered z accel measurement noise"/>
+
+    <configure name="EKF_AW_WING_INSTALLED" value="false" description="Use wing contribution"/>
+    <configure name="EKF_AW_USE_MODEL_BASED" value="false" description="Use model based to augment filter"/>
+    <configure name="EKF_AW_USE_BETA" value="true" description="Use beta to estimate sideforce"/>
+
+    <configure name="EKF_AW_K1_FX_DRAG" value="0.f" description="Drag coefficient linear to u"/>
+    <configure name="EKF_AW_K2_FX_DRAG" value="0.f" description="Drag coefficient linear to u^2"/>
+
   </doc>
   <settings>
     <dl_settings>
       <dl_settings name="EKF_Airspeed_Wind">
+        <dl_setting min="0" max="1" step="1" var="ekf_aw.reset" module="meteo/ekf_aw_wrapper" shortname="reset states and health" handler="reset"/>
+        <dl_setting min="0" max="1" step="1" var="ekf_aw_params.propagate_offset" module="meteo/ekf_aw" shortname="propagate offset"/>
+
         <dl_setting min="1E-1" max="8" step="1E-1" var="ekf_aw_params.vehicle_mass" module="meteo/ekf_aw" shortname="Vehicle Mass"/>
+
         <dl_setting min="-1" max="0" step="1E-3" var="ekf_aw_params.k_fx_drag[0]" module="meteo/ekf_aw" shortname="k_drag_lin"/>
         <dl_setting min="-1" max="0" step="1E-3" var="ekf_aw_params.k_fx_drag[1]" module="meteo/ekf_aw" shortname="k_drag_quad"/>
+
         <dl_setting min="-5E-2" max="0" step="1E-4" var="ekf_aw_params.k_fy_beta" module="meteo/ekf_aw" shortname="k_beta"/>
         <dl_setting min="-5E-2" max="0" step="1E-4" var="ekf_aw_params.k_fy_v" module="meteo/ekf_aw" shortname="k_v"/>
+
         <dl_setting min="1E-9" max="1E-2" step="1E-8" var="ekf_aw_params.Q_accel" module="meteo/ekf_aw" shortname="Q accel" handler="update_Q_accel"/>
         <dl_setting min="1E-9" max="1E-2" step="1E-8" var="ekf_aw_params.Q_gyro" module="meteo/ekf_aw" shortname="Q gyro" handler="update_Q_gyro"/>
         <dl_setting min="1E-9" max="1E-2" step="1E-8" var="ekf_aw_params.Q_mu" module="meteo/ekf_aw" shortname="Q wind" handler="update_Q_mu"/>
         <dl_setting min="1E-9" max="1E-2" step="1E-8" var="ekf_aw_params.Q_k" module="meteo/ekf_aw" shortname="Q offset" handler="update_Q_k"/>
+
         <dl_setting min="1E-9" max="1E-2" step="1E-8" var="ekf_aw_params.R_V_gnd" module="meteo/ekf_aw" shortname="R V_gnd" handler="update_R_V_gnd"/>
         <dl_setting min="1E-9" max="1E-2" step="1E-8" var="ekf_aw_params.R_accel_filt[0]" module="meteo/ekf_aw" shortname="R Accel Filt x" handler="update_R_accel_filt_x"/>
         <dl_setting min="1E-9" max="1E-2" step="1E-8" var="ekf_aw_params.R_accel_filt[1]" module="meteo/ekf_aw" shortname="R Accel Filt y" handler="update_R_accel_filt_y"/>
         <dl_setting min="1E-9" max="1E-2" step="1E-8" var="ekf_aw_params.R_accel_filt[2]" module="meteo/ekf_aw" shortname="R Accel Filt z" handler="update_R_accel_filt_z"/>
         <dl_setting min="1E-9" max="1E-2" step="1E-8" var="ekf_aw_params.R_V_pitot" module="meteo/ekf_aw" shortname="R Pitot" handler="update_R_V_pitot"/>
-        <dl_setting min="0" max="1" step="1" var="ekf_aw.reset" module="meteo/ekf_aw_wrapper" shortname="reset states and health" handler="reset"/>
+
         <dl_setting min="-10" max="10" step="0.1" var="ekf_aw.wind_guess.x" module="meteo/ekf_aw_wrapper" shortname="Wind Guess N" handler="set_wind_N"/>
         <dl_setting min="-10" max="10" step="0.1" var="ekf_aw.wind_guess.y" module="meteo/ekf_aw_wrapper" shortname="Wind Guess E" handler="set_wind_E"/>
         <dl_setting min="-10" max="10" step="0.1" var="ekf_aw.wind_guess.z" module="meteo/ekf_aw_wrapper" shortname="Wind Guess D" handler="set_wind_D"/>
+        
         <dl_setting min="-1" max="1" step="1E-3" var="ekf_aw.offset_guess.x" module="meteo/ekf_aw_wrapper" shortname="Offset Guess x" handler="set_offset_x"/>
         <dl_setting min="-1" max="1" step="1E-3" var="ekf_aw.offset_guess.y" module="meteo/ekf_aw_wrapper" shortname="Offset Guess y" handler="set_offset_y"/>  
         <dl_setting min="-1" max="1" step="1E-3" var="ekf_aw.offset_guess.z" module="meteo/ekf_aw_wrapper" shortname="Offset Guess z" handler="set_offset_z"/>            

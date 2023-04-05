@@ -45,8 +45,8 @@ struct ekfAwParameters {
     float k_fz_elev[2];
 
   // Other options
-  bool wing_installed; ///< Include wing in calculations
-  bool use_model;   ///< disable wind estimation
+  bool use_model;
+  bool propagate_offset;
 };
 
 struct ekfHealth{
@@ -67,6 +67,9 @@ extern void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, str
 extern struct NedCoor_f ekf_aw_get_speed_body(void);
 extern struct NedCoor_f ekf_aw_get_wind_ned(void);
 extern struct NedCoor_f ekf_aw_get_offset(void);
+extern struct FloatVect3 ekf_aw_get_innov_V_gnd(void);
+extern struct FloatVect3 ekf_aw_get_innov_accel_filt(void);
+extern float ekf_aw_get_innov_V_pitot(void);
 extern void ekf_aw_set_speed_body(struct NedCoor_f *s);
 extern void ekf_aw_set_wind(struct NedCoor_f *s);
 extern void ekf_aw_set_offset(struct NedCoor_f *s);

@@ -31,9 +31,9 @@ static void send_airspeed_wind_ekf(struct transport_tx *trans, struct link_devic
                               &ekf_aw.Vg_NED.x,
                               &ekf_aw.Vg_NED.y,
                               &ekf_aw.Vg_NED.z,
-                              &ekf_aw.acc_filt.x,
-                              &ekf_aw.acc_filt.y,
-                              &ekf_aw.acc_filt.z);
+                              &ekf_aw.innov_acc_filt.x,
+                              &ekf_aw.innov_acc_filt.y,
+                              &ekf_aw.innov_acc_filt.z);
                               
 }
 #endif
@@ -167,6 +167,9 @@ void ekf_aw_wrapper_periodic(void){
   ekf_aw.wind = ekf_aw_get_wind_ned();
   ekf_aw.offset = ekf_aw_get_offset();
   ekf_aw.health = ekf_aw_get_health();
+  ekf_aw.innov_V_gnd = ekf_aw_get_innov_V_gnd();
+  ekf_aw.innov_acc_filt = ekf_aw_get_innov_accel_filt();
+  ekf_aw.innov_V_pitot = ekf_aw_get_innov_V_pitot();
 
 
 };
