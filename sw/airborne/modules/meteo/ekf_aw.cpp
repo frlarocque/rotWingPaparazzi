@@ -78,6 +78,16 @@ struct ekfAwMeasurements {
 	float V_pitot;
 };
 
+/** forces vector
+ */
+struct ekfAwForces {
+  Vector3f fuselage;
+  Vector3f wing;
+  Vector3f elevator;
+  Vector3f hover;
+  Vector3f pusher;
+};
+
 /** private filter structure
  */
 struct ekfAwPrivate {
@@ -85,6 +95,7 @@ struct ekfAwPrivate {
   struct ekfAwInputs inputs;
   struct ekfAwMeasurements measurements;
   struct ekfAwMeasurements innovations;
+  struct ekfAwForces forces;
 
   EKF_Aw_Cov P;
   EKF_Aw_Q Q;
@@ -158,59 +169,59 @@ struct ekfAwPrivate {
 #endif
 
 #ifndef EKF_AW_K1_FX_FUSELAGE
-#define EKF_AW_K1_FX_FUSELAGE 0.0f
+#define EKF_AW_K1_FX_FUSELAGE -8.111212221498999e-03f
 #endif
 #ifndef EKF_AW_K2_FX_FUSELAGE
-#define EKF_AW_K2_FX_FUSELAGE 0.0f
+#define EKF_AW_K2_FX_FUSELAGE -2.477135327454600e-02f
 #endif
 #ifndef EKF_AW_K3_FX_FUSELAGE
-#define EKF_AW_K3_FX_FUSELAGE 0.0f
+#define EKF_AW_K3_FX_FUSELAGE -8.297633291170999e-03f
 #endif
 #ifndef EKF_AW_K4_FX_FUSELAGE
-#define EKF_AW_K4_FX_FUSELAGE 0.0f
+#define EKF_AW_K4_FX_FUSELAGE 1.772463067231450e-01f
 #endif
 
 #ifndef EKF_AW_K1_FX_HOVER
-#define EKF_AW_K1_FX_HOVER 0.0f
+#define EKF_AW_K1_FX_HOVER -7.079408305585384e-03f
 #endif
 #ifndef EKF_AW_K2_FX_HOVER
-#define EKF_AW_K2_FX_HOVER 0.0f
+#define EKF_AW_K2_FX_HOVER -5.901747663915160e-08f
 #endif
 
 #ifndef EKF_AW_K1_FX_WING
-#define EKF_AW_K1_FX_WING 0.0f
+#define EKF_AW_K1_FX_WING -6.428638953316000e-03f
 #endif
 #ifndef EKF_AW_K2_FX_WING
-#define EKF_AW_K2_FX_WING 0.0f
+#define EKF_AW_K2_FX_WING 1.671952644901720e-01f
 #endif
 #ifndef EKF_AW_K3_FX_WING
-#define EKF_AW_K3_FX_WING 0.0f
+#define EKF_AW_K3_FX_WING 5.944103706458780e-01f
 #endif
 #ifndef EKF_AW_K4_FX_WING
-#define EKF_AW_K4_FX_WING 0.0f
+#define EKF_AW_K4_FX_WING 3.983889380919000e-03f
 #endif
 #ifndef EKF_AW_K5_FX_WING
-#define EKF_AW_K5_FX_WING 0.0f
+#define EKF_AW_K5_FX_WING 3.532085496834000e-03f
 #endif
 
 #ifndef EKF_AW_K1_FX_PUSH
-#define EKF_AW_K1_FX_PUSH 0.0f
+#define EKF_AW_K1_FX_PUSH 3.96222948E-07f
 #endif
 #ifndef EKF_AW_K2_FX_PUSH
-#define EKF_AW_K2_FX_PUSH 0.0f
+#define EKF_AW_K2_FX_PUSH -5.2930351318E-05f
 #endif
 #ifndef EKF_AW_K3_FX_PUSH
-#define EKF_AW_K3_FX_PUSH 0.0f
+#define EKF_AW_K3_FX_PUSH -2.68843366027904E-01f
 #endif
 
 #ifndef EKF_AW_K1_FX_ELEV
-#define EKF_AW_K1_FX_ELEV 0.0f
+#define EKF_AW_K1_FX_ELEV -2.60846821341900e-003f
 #endif
 #ifndef EKF_AW_K2_FX_ELEV
-#define EKF_AW_K2_FX_ELEV 0.0f
+#define EKF_AW_K2_FX_ELEV -3.021514681274200e-02f
 #endif
 #ifndef EKF_AW_K3_FX_ELEV
-#define EKF_AW_K3_FX_ELEV 0.0f
+#define EKF_AW_K3_FX_ELEV -2.715491515440000e-04f
 #endif
 
 // Fy
@@ -223,49 +234,49 @@ struct ekfAwPrivate {
 
 // Fz
 #ifndef EKF_AW_K1_FZ_FUSELAGE
-#define EKF_AW_K1_FZ_FUSELAGE 0.0f
+#define EKF_AW_K1_FZ_FUSELAGE -4.010655576495000e-03f
 #endif
 #ifndef EKF_AW_K2_FZ_FUSELAGE
-#define EKF_AW_K2_FZ_FUSELAGE 0.0f
+#define EKF_AW_K2_FZ_FUSELAGE -7.219012910230000e-04f
 #endif
 #ifndef EKF_AW_K3_FZ_FUSELAGE
-#define EKF_AW_K3_FZ_FUSELAGE 0.0f
+#define EKF_AW_K3_FZ_FUSELAGE -1.123832140914010e-01f
 #endif
 #ifndef EKF_AW_K4_FZ_FUSELAGE
-#define EKF_AW_K4_FZ_FUSELAGE 0.0f
+#define EKF_AW_K4_FZ_FUSELAGE 7.781948646548401e-02f
 #endif
 
 #ifndef EKF_AW_K1_FZ_WING
-#define EKF_AW_K1_FZ_WING 0.0f
+#define EKF_AW_K1_FZ_WING -1.000778727574050e-01f
 #endif
 #ifndef EKF_AW_K2_FZ_WING
-#define EKF_AW_K2_FZ_WING 0.0f
+#define EKF_AW_K2_FZ_WING -8.696479964371250e-01f
 #endif
 #ifndef EKF_AW_K3_FZ_WING
-#define EKF_AW_K3_FZ_WING 0.0f
+#define EKF_AW_K3_FZ_WING 1.457831456377660e-01f
 #endif
 #ifndef EKF_AW_K4_FZ_WING
-#define EKF_AW_K4_FZ_WING 0.0f
+#define EKF_AW_K4_FZ_WING 2.185394878246410e-01f
 #endif
 
 #ifndef EKF_AW_K1_FZ_HOVER
-#define EKF_AW_K1_FZ_HOVER 0.0f
+#define EKF_AW_K1_FZ_HOVER -8.738705811080210e-07f
 #endif
 #ifndef EKF_AW_K2_FZ_HOVER
-#define EKF_AW_K2_FZ_HOVER 0.0f
+#define EKF_AW_K2_FZ_HOVER -9.517409386179890e-07f
 #endif
 #ifndef EKF_AW_K3_FZ_HOVER
-#define EKF_AW_K3_FZ_HOVER 0.0f
+#define EKF_AW_K3_FZ_HOVER -8.946217883362630e-07f
 #endif
 #ifndef EKF_AW_K4_FZ_HOVER
-#define EKF_AW_K4_FZ_HOVER 0.0f
+#define EKF_AW_K4_FZ_HOVER -8.520556416144729e-07f
 #endif
 
 #ifndef EKF_AW_K1_FZ_ELEV
-#define EKF_AW_K1_FZ_ELEV 0.0f
+#define EKF_AW_K1_FZ_ELEV 1.095783351808000e-03f
 #endif
 #ifndef EKF_AW_K2_FZ_ELEV
-#define EKF_AW_K2_FZ_ELEV 0.0f
+#define EKF_AW_K2_FZ_ELEV -2.145939080916710e-01f
 #endif
 
 // Other
@@ -301,12 +312,12 @@ float rad2deg = 180.0 / M_PI;
 float fx_fuselage(float *skew,float *aoa,float *V_a);
 float fx_elevator(float *elevator_angle, float *V_a);
 float fx_wing(float *skew,float *aoa,float *V_a);
-float fx_fy_hover(float *RPM_hover, float *V);
+float fx_fy_hover(float *RPM_hover_mean, float *V);
 float fx_pusher(float *RPM_pusher, float *u);
 float fz_fuselage(float *skew,float *aoa,float *V_a);
 float fz_elevator(float *elevator_angle, float *V_a);
 float fz_wing(float *skew,float *aoa,float *V_a);
-float fz_hover(float *RPM_hover_array);
+float fz_hover(Vector4f RPM_hover);
 
 /* init state and measurements */
 static void init_ekf_aw_state(void)
@@ -334,6 +345,13 @@ static void init_ekf_aw_state(void)
   eawp.innovations.V_gnd = Vector3f::Zero();
   eawp.innovations.accel_filt = Vector3f::Zero();
   eawp.innovations.V_pitot = 0.f;
+
+  // init forces
+  eawp.forces.fuselage = Vector3f::Zero();
+  eawp.forces.wing = Vector3f::Zero();
+  eawp.forces.elevator = Vector3f::Zero();
+  eawp.forces.hover = Vector3f::Zero();
+  eawp.forces.pusher = Vector3f::Zero();
 
   // init state covariance
   eawp.P = EKF_Aw_Cov::Zero();
@@ -428,6 +446,10 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
   z = [V_x V_y V_z a_x a_y a_z];
   */
   
+  /////////////////////////////////
+  //     Preparing inputs        //
+  /////////////////////////////////
+
   // Inputs
   eawp.inputs.accel = Vector3f(acc->x, acc->y, acc->z);
   eawp.inputs.rates = Vector3f(gyro->p,gyro->q,gyro->r);
@@ -439,7 +461,10 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
   //std::cout << "Hover prop:\n" << eawp.inputs.RPM_hover << std::endl;
 
   eawp.inputs.skew = *skew;
+  eawp.inputs.skew = eawp.inputs.skew < 0 ? 0 : eawp.inputs.skew > deg2rad*90 ? deg2rad*90 : eawp.inputs.skew; // Saturate 0-90 deg
+
   eawp.inputs.elevator_angle = *elevator_angle;
+  eawp.inputs.elevator_angle = eawp.inputs.elevator_angle < deg2rad*EKF_AW_ELEV_MIN_ANGLE ? deg2rad*EKF_AW_ELEV_MIN_ANGLE : eawp.inputs.elevator_angle > deg2rad*EKF_AW_ELEV_MAX_ANGLE ? deg2rad*EKF_AW_ELEV_MAX_ANGLE : eawp.inputs.elevator_angle; // Saturate
 
   // Measurements
   eawp.measurements.V_gnd = Vector3f(V_gnd->x,V_gnd->y,V_gnd->z);
@@ -475,10 +500,44 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
   float cos_psi = cosf(psi);
   float sin_psi = sinf(psi);
 
+  float cos_skew = cosf(eawp.inputs.skew);
+  float sin_skew = sinf(eawp.inputs.skew);
+
+  // Calculate alpha
+  float aoa = atan2(w,u);
+  aoa = aoa < deg2rad*EKF_AW_AOA_MIN_ANGLE ? deg2rad*EKF_AW_AOA_MIN_ANGLE : aoa > deg2rad*EKF_AW_AOA_MAX_ANGLE ? deg2rad*EKF_AW_AOA_MAX_ANGLE : aoa;
+  float tan_aoa = tanf(aoa);
+
+  // Calculate beta
+  float beta = 0; //sideslip estimation
+  if (V_a > 1E-5){
+    beta = asinf(v/V_a < -1 ? -1 : v/V_a > 1 ? 1 : v/V_a); // Ratio is kept between -1 and 1
+  }
+
+  float diff_alpha_u = 0;
+  float diff_alpha_w = 0;
+  if (u > 1E-3){
+    diff_alpha_u = -w/(u*u*(tan_aoa*tan_aoa + 1)); // -w/(u^2*(w^2/u^2 + 1))
+    diff_alpha_w = 1/(u*(tan_aoa*tan_aoa + 1));    // 1/(u*(w^2/u^2 + 1))
+  } 
+
+  float hover_RPM_mean = eawp.inputs.RPM_hover.mean();
+
+  // Verify vehicle mass is not 0
+  ekf_aw_params.vehicle_mass = ekf_aw_params.vehicle_mass == 0 ? 1E-1 : ekf_aw_params.vehicle_mass;
+
+  /////////////////////////////////
+  //      Propagate States       //
+  /////////////////////////////////
+
   // Propagate state by Euler Integration
   Vector3f state_dev = Vector3f::Zero();
   state_dev = -eawp.inputs.rates.cross(eawp.state.V_body)+quat.toRotationMatrix().transpose() * gravity + eawp.inputs.accel; // Verified and compared to Matlab output
   eawp.state.V_body += state_dev * dt;
+
+  /////////////////////////////////
+  //    Propagate Covariance     //
+  /////////////////////////////////
 
   // F Matrix
   /*
@@ -507,7 +566,7 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
         ...                               ;
         dx_n/dw_1 dx_n/dw_2 ....dx_n/dw_m ];
 
-  Validated and compared to Matlab output for F
+  Validated and compared to Matlab output for L
   */
   Matrix<float, EKF_AW_COV_SIZE, EKF_AW_Q_SIZE> L;
   L.setZero();
@@ -531,34 +590,38 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
   Lt = L.transpose();
 
   // Propagate covariance
-  eawp.P = F * eawp.P * Ft + L * eawp.Q * Lt; // TO DO: does it need to be multiplied by dt?
+  eawp.P = F * eawp.P * Ft + L * eawp.Q * Lt;
 
-  // Calculate measurement estimation from state
+  ///////////////////////////////////////////
+  //  Measurement estimation from state    //
+  ///////////////////////////////////////////
+
+  // Calculate 
   float a_x;
-  float a_y; // side acceleration 
-  float a_z = eawp.measurements.accel_filt(2);
+  float a_y; 
+  float a_z;
 
-  // Calculate alpha
-  float aoa = atan2(w,u);
-
-  // Missing calculation of A_z
-  a_x = (ekf_aw_params.k_fx_drag[0]*u + ekf_aw_params.k_fx_drag[1]*u*u*sign_u + eawp.state.offset(0)*u*u*sign_u)/ekf_aw_params.vehicle_mass; // TO DO: add pusher constant as dlsettings
-  // ...... 
-  // ...... 
-  // ...... 
-  // ...... 
-  // ...... 
-  // ......
-
-  // A_y
-  float beta = 0; //sideslip estimation
-  if (V_a < 1E-5){
-    beta=0;
+  // A_x
+  if (EKF_AW_USE_MODEL_BASED){
+    eawp.forces.fuselage(0) = fx_fuselage(&eawp.inputs.skew,&aoa,&V_a);    
+    eawp.forces.wing(0)     = fx_wing(&eawp.inputs.skew,&aoa,&V_a);
+    eawp.forces.elevator(0) = fx_elevator(&eawp.inputs.elevator_angle, &V_a);
+    eawp.forces.hover(0)    = fx_fy_hover(&hover_RPM_mean, &u);
+    eawp.forces.pusher(0)   = fx_pusher(&eawp.inputs.RPM_pusher, &u);
+    a_x = (eawp.forces.fuselage(0) +
+           eawp.forces.wing(0) +
+           eawp.forces.elevator(0) +
+           eawp.forces.hover(0) +
+           eawp.forces.pusher(0) +
+           eawp.state.offset(0)*u*u*sign_u)/ekf_aw_params.vehicle_mass;
   }
   else{
-    beta = asinf(v/V_a < -1 ? -1 : v/V_a > 1 ? 1 : v/V_a); // Ratio is kepts between -1 and 1
+    a_x = (ekf_aw_params.k_fx_drag[0]*u +
+           ekf_aw_params.k_fx_drag[1]*u*u*sign_u +
+           eawp.state.offset(0)*u*u*sign_u)/ekf_aw_params.vehicle_mass;
   }
 
+  // A_y
   if (EKF_AW_USE_BETA){
     // TO DO: add model of sideforce generated by wing in transition (max sideforce generated when angle is 45 deg?)
     a_y = beta*ekf_aw_params.k_fy_beta*(V_a*V_a) + eawp.state.offset(1); // No need to bound beta equation as beta is generated by asin, which is bounded between -pi/2 and pi/2
@@ -567,10 +630,23 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
     a_y = sign_v*v*v*ekf_aw_params.k_fy_v + eawp.state.offset(1);
   }
   
+  // A_z
+  if (EKF_AW_USE_MODEL_BASED){
+    eawp.forces.fuselage(2) = fz_fuselage(&eawp.inputs.skew,&aoa,&V_a);    
+    eawp.forces.elevator(2) = fz_elevator(&eawp.inputs.elevator_angle, &V_a);
+    eawp.forces.wing(2)     = fz_wing(&eawp.inputs.skew,&aoa,&V_a);    
+    eawp.forces.hover(2)    = fz_hover(eawp.inputs.RPM_hover);
+
+    a_z = (eawp.forces.fuselage(2) +
+           eawp.forces.elevator(2) + 
+           eawp.forces.wing(2) +
+           eawp.forces.hover(2))/ekf_aw_params.vehicle_mass + eawp.state.offset(1);    
+  }
+  else{
+    a_z = eawp.measurements.accel_filt(2);
+  }
 
   Vector3f accel_est = {a_x, a_y, a_z};
-  //std::cout << "beta:\n" << beta << std::endl;
-  //std::cout << "Accel_y est:\n" << accel_est << std::endl;
 
   // Innovation
   eawp.innovations.V_gnd = eawp.measurements.V_gnd - (quat.toRotationMatrix() * eawp.state.V_body + eawp.state.wind);
@@ -584,6 +660,10 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
   //std::cout << "Innov V_gnd:\n" << eawp.innovations.V_gnd << std::endl;
   //std::cout << "Innov accel_filt:\n" << eawp.innovations.accel_filt << std::endl;
   //std::cout << "Euler:\n" << eawp.inputs.euler << std::endl;
+
+  /////////////////////////////////
+  //         State Update        //
+  /////////////////////////////////
 
   // G Matrix Calculation
   /*
@@ -609,31 +689,80 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
   G(2,5) = 1;
   
   // A_x_filt related lines
-  ekf_aw_params.vehicle_mass = ekf_aw_params.vehicle_mass == 0 ? 1E-1 : ekf_aw_params.vehicle_mass;
-  G(3,0) = (ekf_aw_params.k_fx_drag[0] + ekf_aw_params.k_fx_push[2] + eawp.inputs.RPM_pusher*ekf_aw_params.k_fx_push[1] + 2*ekf_aw_params.k_fx_drag[1]*u*sign_u + 2*eawp.state.offset(0)*u*sign_u)/ekf_aw_params.vehicle_mass; // Simplified version (using u instead of V_a)
-  G(3,6) = (u*u*sign_u)/ekf_aw_params.vehicle_mass;
+  if (EKF_AW_USE_MODEL_BASED){ 
+    // Validated and compared to Matlab output for G
+
+    // Pusher contribution
+    G(3,0) += (ekf_aw_params.k_fx_push[2] + eawp.inputs.RPM_pusher*ekf_aw_params.k_fx_push[1])/ekf_aw_params.vehicle_mass; 
+    
+    // Fuselage contribution
+    float temp_1 = ekf_aw_params.k_fx_fuselage[1] + ekf_aw_params.k_fx_fuselage[3]*aoa*aoa + ekf_aw_params.k_fx_fuselage[0]*cos_skew + ekf_aw_params.k_fx_fuselage[2]*aoa;
+    G(3,0) += (2*u*(temp_1) + (ekf_aw_params.k_fx_fuselage[2]*diff_alpha_u + 2*ekf_aw_params.k_fx_fuselage[3]*aoa*diff_alpha_u)*V_a*V_a)/ekf_aw_params.vehicle_mass; 
+    G(3,1) += (2*v*(temp_1)/ekf_aw_params.vehicle_mass);
+    G(3,2) += (2*w*(temp_1) + (ekf_aw_params.k_fx_fuselage[2]*diff_alpha_w + 2*ekf_aw_params.k_fx_fuselage[3]*aoa*diff_alpha_w)*V_a*V_a)/ekf_aw_params.vehicle_mass;
+    
+    // Hover prop contribution
+    G(3,0) += (2*ekf_aw_params.k_fx_hover[0]*sign_u*u + (0.5*ekf_aw_params.k_fx_hover[1]*sign_u*hover_RPM_mean*hover_RPM_mean)/sqrt(abs(u ==0 ? 1E-5 : u)))/ekf_aw_params.vehicle_mass; // TO DO: Verify the abs()
+  
+    // Wing contribution
+    float temp_2 = ekf_aw_params.k_fx_wing[0] + ekf_aw_params.k_fx_wing[4]*eawp.inputs.skew + (sin_skew*sin_skew + ekf_aw_params.k_fx_wing[3])*(ekf_aw_params.k_fx_wing[2]*aoa*aoa + ekf_aw_params.k_fx_wing[1]*aoa);
+    float temp_3 = sin_skew*sin_skew + ekf_aw_params.k_fx_wing[3];
+    G(3,0) += (2*u*temp_2 + temp_3*(ekf_aw_params.k_fx_wing[1]*diff_alpha_u + 2*ekf_aw_params.k_fx_wing[2]*aoa*diff_alpha_u)*V_a*V_a)/ekf_aw_params.vehicle_mass;
+    G(3,1) += (2*v*temp_2)/ekf_aw_params.vehicle_mass;
+    G(3,2) += (2*w*temp_2 + temp_3*(ekf_aw_params.k_fx_wing[1]*diff_alpha_w + 2*ekf_aw_params.k_fx_wing[2]*atan(w/u)*diff_alpha_w)*V_a*V_a)/ekf_aw_params.vehicle_mass;
+    
+    // Elevator contribution
+    float temp_4 = ekf_aw_params.k_fx_elev[2]*eawp.inputs.elevator_angle*eawp.inputs.elevator_angle + ekf_aw_params.k_fx_elev[1]*eawp.inputs.elevator_angle + ekf_aw_params.k_fx_elev[0];
+    G(3,0) += (2*u*temp_4)/ekf_aw_params.vehicle_mass;
+    G(3,1) += (2*v*temp_4)/ekf_aw_params.vehicle_mass;
+    G(3,2) += (2*w*temp_4)/ekf_aw_params.vehicle_mass;
+        
+  }
+  else{
+    G(3,0) = (ekf_aw_params.k_fx_drag[0] + 2*ekf_aw_params.k_fx_drag[1]*u*sign_u)/ekf_aw_params.vehicle_mass; // Simplified version (using u instead of V_a)
+  }
+    // Offset contribution
+    G(3,0) += (2*eawp.state.offset[0]*sign_u*u)/ekf_aw_params.vehicle_mass;
+    G(3,6) = (u*u*sign_u)/ekf_aw_params.vehicle_mass;
 
   // A_y_filt related lines
   if (EKF_AW_USE_BETA){
-    float protected_V_a = V_a ==0 ? 1E-7 : V_a;
-    float cos_beta = cosf(beta) == 0 ? 1E-8 : cosf(beta);
+    float protected_V_a = V_a ==0 ? 1E-5 : V_a;
+    float cos_beta = cosf(beta) == 0 ? 1E-5 : cosf(beta);
     G(4,0) = 2*ekf_aw_params.k_fy_beta*u*beta - (ekf_aw_params.k_fy_beta*u*v)/(cos_beta*protected_V_a);
     G(4,1) = 2*ekf_aw_params.k_fy_beta*v*beta + (ekf_aw_params.k_fy_beta*(V_a - v*sinf(beta)))/cos_beta;
     G(4,2) = 2*ekf_aw_params.k_fy_beta*w*beta - (ekf_aw_params.k_fy_beta*v*w)/(cos_beta*protected_V_a);
-    G(4,7) = 1;
   }
   else{
     G(4,1) = 2*ekf_aw_params.k_fy_v*v*sign_v;
-    G(4,7) = 1;
   }
-  
-  // TO DO: A_z_filt related lines 
-  /*
-  G(5,0) = (2*u*(k2_Fz_fus + k4_Fz_fus*atan(w/u)^2 + k1_Fz_fus*cos(skew) + k3_Fz_fus*atan(w/u)) + 2*u*(k1_Fz_elev + elevator_angle*k2_Fz_elev + elevator_angle^2*k3_Fz_elev) - ((k3_Fz_fus*w)/(u^2*(w^2/u^2 + 1)) + (2*k4_Fz_fus*w*atan(w/u))/(u^2*(w^2/u^2 + 1)))*(u^2 + v*v + w^2) - (k4_Fz_w + sin(skew)^2)*((k2_Fz_w*w)/(u^2*(w^2/u^2 + 1)) + (2*k3_Fz_w*w*atan(w/u))/(u^2*(w^2/u^2 + 1)))*(u^2 + v^2 + w^2) + 2*u*(k4_Fz_w + sin(skew)^2)*(k1_Fz_w + k3_Fz_w*atan(w/u)^2 + k2_Fz_w*atan(w/u)))/m;
-  G(5,1) = (2*v*(k2_Fz_fus + k4_Fz_fus*atan(w/u)^2 + k1_Fz_fus*cos(skew) + k3_Fz_fus*atan(w/u)) + 2*v*(k1_Fz_elev + elevator_angle*k2_Fz_elev + elevator_angle^2*k3_Fz_elev) + 2*v*(k4_Fz_w + sin(skew)^2)*(k1_Fz_w + k3_Fz_w*atan(w/u)^2 + k2_Fz_w*atan(w/u)))/m;
-  G(5,2) = (2*w*(k2_Fz_fus + k4_Fz_fus*atan(w/u)^2 + k1_Fz_fus*cos(skew) + k3_Fz_fus*atan(w/u)) + 2*w*(k1_Fz_elev + elevator_angle*k2_Fz_elev + elevator_angle^2*k3_Fz_elev) + (k3_Fz_fus/(u*(w^2/u^2 + 1)) + (2*k4_Fz_fus*atan(w/u))/(u*(w^2/u^2 + 1)))*(u^2 + v^2 + w^2) + (k4_Fz_w + sin(skew)^2)*(k2_Fz_w/(u*(w^2/u^2 + 1)) + (2*k3_Fz_w*atan(w/u))/(u*(w^2/u^2 + 1)))*(u^2 + v^2 + w^2) + 2*w*(k4_Fz_w + sin(skew)^2)*(k1_Fz_w + k3_Fz_w*atan(w/u)^2 + k2_Fz_w*atan(w/u)))/m;
-  G(5,8) = 1;
-  */
+  G(4,7) = 1;
+
+  // A_z_filt related lines
+  if (EKF_AW_USE_MODEL_BASED){ 
+    // Validated and compared to Matlab output for G
+
+    // Fuselage contribution
+    float temp_5 = ekf_aw_params.k_fz_fuselage[1] + ekf_aw_params.k_fz_fuselage[3]*aoa*aoa + ekf_aw_params.k_fz_fuselage[0]*cos_skew + ekf_aw_params.k_fz_fuselage[2]*aoa;
+    G(5,0) += (2*u*temp_5 + (ekf_aw_params.k_fz_fuselage[2]*diff_alpha_u + 2*ekf_aw_params.k_fz_fuselage[3]*aoa*diff_alpha_u)*V_a*V_a)/ekf_aw_params.vehicle_mass;
+    G(5,1) += (2*v*temp_5)/ekf_aw_params.vehicle_mass;
+    G(5,2) += (2*w*temp_5 + (ekf_aw_params.k_fz_fuselage[2]*diff_alpha_w + 2*ekf_aw_params.k_fz_fuselage[3]*aoa*diff_alpha_w)*V_a*V_a)/ekf_aw_params.vehicle_mass;
+
+    // Wing contribution
+    G(5,0) += (2*u*(sin_skew*sin_skew + ekf_aw_params.k_fz_wing[3])*(ekf_aw_params.k_fz_wing[0] + ekf_aw_params.k_fz_wing[2]*aoa*aoa + ekf_aw_params.k_fz_wing[1]*aoa) - (sin_skew*sin_skew + ekf_aw_params.k_fz_wing[3])*(-ekf_aw_params.k_fz_wing[1]*diff_alpha_u + -2*ekf_aw_params.k_fz_wing[2]*aoa*diff_alpha_u)*V_a*V_a)/ekf_aw_params.vehicle_mass;
+    G(5,1) += (2*v*(sin_skew*sin_skew + ekf_aw_params.k_fz_wing[3])*(ekf_aw_params.k_fz_wing[0] + ekf_aw_params.k_fz_wing[2]*aoa*aoa + ekf_aw_params.k_fz_wing[1]*aoa)/ekf_aw_params.vehicle_mass);
+    G(5,2) += ((sin_skew*sin_skew + ekf_aw_params.k_fz_wing[3])*(ekf_aw_params.k_fz_wing[1]*diff_alpha_w + 2*ekf_aw_params.k_fz_wing[2]*aoa*diff_alpha_w)*V_a*V_a + 2*w*(sin_skew*sin_skew + ekf_aw_params.k_fz_wing[3])*(ekf_aw_params.k_fz_wing[0] + ekf_aw_params.k_fz_wing[2]*aoa*aoa + ekf_aw_params.k_fz_wing[1]*aoa))/ekf_aw_params.vehicle_mass;
+    
+    // Elevator contribution
+    float temp_6 = ekf_aw_params.k_fz_elev[1]*eawp.inputs.elevator_angle + ekf_aw_params.k_fz_elev[0];
+    G(5,0) += (2*u*temp_6)/ekf_aw_params.vehicle_mass;
+    G(5,1) += (2*v*temp_6)/ekf_aw_params.vehicle_mass;
+    G(5,2) += (2*w*temp_6)/ekf_aw_params.vehicle_mass;
+    
+  }
+    // Offset contribution
+    G(5,8) = 1;
+
   // V_pitot related lines 
   G(6,0) = 1;
 
@@ -646,7 +775,8 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
   // Kalman Gain Calculation
   Matrix<float, EKF_AW_COV_SIZE, EKF_AW_R_SIZE> K = eawp.P * Gt * S.inverse(); // TO DO: make sure no NAN can be created in inversion
 
-  //std::cout << "G matrix:\n" << G << std::endl;
+  std::cout << "elev:\n" << eawp.inputs.elevator_angle << std::endl;
+  std::cout << "G matrix:\n" << G << std::endl;
   //std::cout << "Cov matrix:\n" << eawp.P << std::endl;
   //std::cout << "S inverse:\n" << S.inverse() << std::endl;
   //std::cout << "K V_body V_gnd:\n" << K.block<3,3>(0,0) * eawp.innovations.V_gnd << std::endl;
@@ -729,9 +859,6 @@ void ekf_aw_set_offset(struct NedCoor_f *s)
 
 // Fx Forces functions
 float fx_fuselage(float *skew,float *aoa,float *V_a){
-  
-  Bound(*skew,0.0f,deg2rad*90.);
-  Bound(*aoa,deg2rad*-EKF_AW_AOA_MIN_ANGLE,deg2rad*EKF_AW_AOA_MAX_ANGLE);
 
   float Fx = (ekf_aw_params.k_fx_fuselage[0]*cosf(*skew)+
                        ekf_aw_params.k_fx_fuselage[1] + 
@@ -743,8 +870,6 @@ float fx_fuselage(float *skew,float *aoa,float *V_a){
 
 float fx_elevator(float *elevator_angle, float *V_a){
 
-  Bound(*elevator_angle,deg2rad*EKF_AW_ELEV_MIN_ANGLE,deg2rad*EKF_AW_ELEV_MAX_ANGLE);
-
   float Fx = (ekf_aw_params.k_fx_elev[0] +
               ekf_aw_params.k_fx_elev[1] * *elevator_angle +
               ekf_aw_params.k_fx_elev[2] * *elevator_angle * *elevator_angle) * *V_a * *V_a;
@@ -754,9 +879,6 @@ float fx_elevator(float *elevator_angle, float *V_a){
 
 float fx_wing(float *skew,float *aoa,float *V_a){
 
-  Bound(*skew,0.0f,deg2rad*90.);
-  Bound(*aoa,deg2rad*EKF_AW_AOA_MIN_ANGLE,deg2rad*EKF_AW_AOA_MAX_ANGLE);
-
   float Fx = (*V_a * *V_a) *(ekf_aw_params.k_fx_wing[0] + 
                              ekf_aw_params.k_fx_wing[4] *sinf(*skew) +
                                  (ekf_aw_params.k_fx_wing[1] * *aoa +
@@ -765,12 +887,12 @@ float fx_wing(float *skew,float *aoa,float *V_a){
   return Fx;
 };
 
-float fx_fy_hover(float *RPM_hover, float *V){
+float fx_fy_hover(float *RPM_hover_mean, float *V){
 
   float sign = *V < 0 ? -1 : *V > 0 ? 1 : 0;
 
   float Fx = ekf_aw_params.k_fx_hover[0] * (*V * *V) * sign +
-             ekf_aw_params.k_fx_hover[1] *sqrt(fabsf(*V)) * sign * (*RPM_hover * *RPM_hover);
+             ekf_aw_params.k_fx_hover[1] *sqrt(fabsf(*V)) * sign * (*RPM_hover_mean * *RPM_hover_mean);
 
   return Fx;
 };
@@ -794,9 +916,6 @@ float fx_pusher(float *RPM_pusher, float *u){
 
 // Fz Forces functions
 float fz_fuselage(float *skew,float *aoa,float *V_a){
-  
-  Bound(*skew,0.0f,deg2rad*90.);
-  Bound(*aoa,deg2rad*EKF_AW_AOA_MIN_ANGLE,deg2rad*EKF_AW_AOA_MAX_ANGLE);
 
   float Fz = (ekf_aw_params.k_fz_fuselage[0]*cosf(*skew)+
                        ekf_aw_params.k_fz_fuselage[1] + 
@@ -808,8 +927,6 @@ float fz_fuselage(float *skew,float *aoa,float *V_a){
 
 float fz_elevator(float *elevator_angle, float *V_a){
 
-  Bound(*elevator_angle,deg2rad*EKF_AW_ELEV_MIN_ANGLE,deg2rad*EKF_AW_ELEV_MAX_ANGLE);
-
   float Fz = (ekf_aw_params.k_fz_elev[0] +
               ekf_aw_params.k_fz_elev[1] * *elevator_angle) * *V_a * *V_a;
 
@@ -818,8 +935,6 @@ float fz_elevator(float *elevator_angle, float *V_a){
 
 float fz_wing(float *skew,float *aoa,float *V_a){
 
-  Bound(*aoa,deg2rad*EKF_AW_AOA_MIN_ANGLE,deg2rad*EKF_AW_AOA_MAX_ANGLE);
-
   float Fz = ((ekf_aw_params.k_fz_wing[0] + 
                 ekf_aw_params.k_fz_wing[1] * *aoa +
                 ekf_aw_params.k_fz_wing[2] * (*aoa * *aoa)) * (sinf(*skew) * sinf(*skew) + ekf_aw_params.k_fz_wing[3])) * (*V_a * *V_a);
@@ -827,12 +942,12 @@ float fz_wing(float *skew,float *aoa,float *V_a){
   return Fz;
 };
 
-float fz_hover(float *RPM_hover_array){
+float fz_hover(Vector4f RPM_hover){
 
-  float Fz = RPM_hover_array[0] * ekf_aw_params.k_fz_hover[0] +
-             RPM_hover_array[1] * ekf_aw_params.k_fz_hover[1] +
-             RPM_hover_array[2] * ekf_aw_params.k_fz_hover[2] +
-             RPM_hover_array[3] * ekf_aw_params.k_fz_hover[3] ;
+  float Fz = RPM_hover[0] * ekf_aw_params.k_fz_hover[0] +
+             RPM_hover[1] * ekf_aw_params.k_fz_hover[1] +
+             RPM_hover[2] * ekf_aw_params.k_fz_hover[2] +
+             RPM_hover[3] * ekf_aw_params.k_fz_hover[3] ;
 
   return Fz;
 
