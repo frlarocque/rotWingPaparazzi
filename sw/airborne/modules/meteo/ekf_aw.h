@@ -34,7 +34,6 @@ struct ekfAwParameters {
     float k_fx_elev[3];
 
     // Y Axis
-    bool use_kv;
     float k_fy_beta;
     float k_fy_v;
     // TO DO: add coefficients for sideforce due to skewed wing
@@ -50,6 +49,11 @@ struct ekfAwParameters {
   bool use_model;   ///< disable wind estimation
 };
 
+struct ekfHealth{
+  bool healthy;
+  uint16_t crashes_n;
+};
+
 extern struct ekfAwParameters ekf_aw_params;
 
 // Init functions
@@ -63,12 +67,15 @@ extern void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, str
 extern struct NedCoor_f ekf_aw_get_speed_body(void);
 extern struct NedCoor_f ekf_aw_get_wind_ned(void);
 extern struct NedCoor_f ekf_aw_get_offset(void);
-
-// Settings handlers
-extern void ekf_aw_update_params(void);
 extern void ekf_aw_set_speed_body(struct NedCoor_f *s);
 extern void ekf_aw_set_wind(struct NedCoor_f *s);
 extern void ekf_aw_set_offset(struct NedCoor_f *s);
+extern struct ekfHealth ekf_aw_get_health(void);
+
+// Settings handlers
+extern void ekf_aw_update_params(void);
+extern void ekf_aw_reset_health(void);
+
 
 
 #define ekf_aw_update_Q_accel(_v) { \

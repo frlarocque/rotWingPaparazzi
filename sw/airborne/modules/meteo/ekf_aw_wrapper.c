@@ -14,6 +14,8 @@
 #include "modules/datalink/telemetry.h"
 static void send_airspeed_wind_ekf(struct transport_tx *trans, struct link_device *dev)
 {
+  uint8_t healthy = (uint8_t)ekf_aw.health.healthy;
+  
   pprz_msg_send_AIRSPEED_WIND_ESTIMATOR_EKF(trans, dev, AC_ID,
                               &ekf_aw.V_body.x,
                               &ekf_aw.V_body.y,
@@ -24,12 +26,15 @@ static void send_airspeed_wind_ekf(struct transport_tx *trans, struct link_devic
                               &ekf_aw.offset.x,
                               &ekf_aw.offset.y,
                               &ekf_aw.offset.z,
+                              &healthy,
+                              &ekf_aw.health.crashes_n,
                               &ekf_aw.Vg_NED.x,
                               &ekf_aw.Vg_NED.y,
                               &ekf_aw.Vg_NED.z,
                               &ekf_aw.acc_filt.x,
                               &ekf_aw.acc_filt.y,
                               &ekf_aw.acc_filt.z);
+                              
 }
 #endif
 
@@ -46,7 +51,7 @@ float tau_filter_low = 0.2;
 // Bool Reset EKF Filter
 bool reset_filter = false;
 
-const struct NedCoor_f zero_speed = {
+struct NedCoor_f zero_speed = {
     .x = 0,
     .y = 0,
     .z = 0
@@ -161,6 +166,8 @@ void ekf_aw_wrapper_periodic(void){
   ekf_aw.V_body = ekf_aw_get_speed_body();
   ekf_aw.wind = ekf_aw_get_wind_ned();
   ekf_aw.offset = ekf_aw_get_offset();
+  ekf_aw.health = ekf_aw_get_health();
+
 
 };
 

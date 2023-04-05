@@ -5,6 +5,7 @@
 #include "math/pprz_algebra_int.h"
 #include "math/pprz_algebra_float.h"
 #include "math/pprz_geodetic_float.h"
+#include "modules/meteo/ekf_aw.h"
 
 
 /* Main EKF structure */
@@ -35,6 +36,7 @@ struct ekfAw {
   bool reset;
   struct NedCoor_f wind_guess;
   struct NedCoor_f offset_guess;
+  struct ekfHealth health; 
 
 };
 
@@ -50,6 +52,7 @@ extern struct ekfAw ekf_aw;
 #define ekf_aw_wrapper_reset(_v) { \
   ekf_aw.reset = false;  \
   ekf_aw_reset();                  \
+  ekf_aw_reset_health();                  \
 }
 
 #define ekf_aw_wrapper_set_wind_N(_v) { \

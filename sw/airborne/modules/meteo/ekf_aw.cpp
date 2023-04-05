@@ -1,6 +1,7 @@
 #include "modules/meteo/ekf_aw.h"
 #include <iostream>
 #include <stdio.h>
+#include "std.h"
 #include <math.h>
 
 #ifndef SITL
@@ -100,6 +101,8 @@ struct ekfAwPrivate {
   EKF_Aw_Cov P;
   EKF_Aw_Q Q;
   EKF_Aw_R R;
+
+  struct ekfHealth health;
 };
 
 // Parameters Initial Covariance Matrix
@@ -367,6 +370,9 @@ static void init_ekf_aw_state(void)
 
   // init process and measurements noise
   ekf_aw_update_params();
+
+  // Init filter health
+  eawp.health.healthy = true;
 }
 
 /**
@@ -410,6 +416,9 @@ void ekf_aw_init(void)
   // init state and measurements
   init_ekf_aw_state();
 
+  // Init crashes number
+  eawp.health.crashes_n = 0;
+
 }
 
 void ekf_aw_update_params(void)
@@ -446,6 +455,12 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
   z = [V_x V_y V_z a_x a_y a_z];
   */
   
+  // Exit filter if the filter crashed more than 500 times (50 Hz*5s)
+  if (eawp.health.crashes_n > 250){
+    eawp.health.healthy = false;
+    return;
+  }
+
   /////////////////////////////////
   //     Preparing inputs        //
   /////////////////////////////////
@@ -773,33 +788,44 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
   Matrix<float, EKF_AW_R_SIZE, EKF_AW_R_SIZE> S = G * eawp.P * Gt + eawp.R; // M = identity
   
   // Kalman Gain Calculation
-  Matrix<float, EKF_AW_COV_SIZE, EKF_AW_R_SIZE> K = eawp.P * Gt * S.inverse(); // TO DO: make sure no NAN can be created in inversion
+  Matrix<float, EKF_AW_COV_SIZE, EKF_AW_R_SIZE> K = eawp.P * Gt * S.inverse(); // TO DO: do we really need to compute the inverse? Any alternative?
 
-  std::cout << "elev:\n" << eawp.inputs.elevator_angle << std::endl;
-  std::cout << "G matrix:\n" << G << std::endl;
+  // Check if Kalman Gain contains any nan
+  if (K.array().isNaN().any()){
+    eawp.health.healthy = false;
+    eawp.health.crashes_n += 1;
+  }
+  else{
+    eawp.health.healthy = true;
+
+    // State update using V_gnd
+    eawp.state.V_body  += K.block<3,3>(0,0) * eawp.innovations.V_gnd; 
+    eawp.state.wind    += K.block<3,3>(3,0) * eawp.innovations.V_gnd; 
+    eawp.state.offset  += K.block<3,3>(6,0) * eawp.innovations.V_gnd;
+
+    // State update using a_y_filt
+    eawp.state.V_body  += K.block<3,3>(0,3) * eawp.innovations.accel_filt; 
+    eawp.state.wind    += K.block<3,3>(3,3) * eawp.innovations.accel_filt; 
+    eawp.state.offset  += K.block<3,3>(6,3) * eawp.innovations.accel_filt;
+
+    // State update using V_pitot (if available)
+    eawp.state.V_body  += K.block<3,1>(0,3) * eawp.innovations.V_pitot; 
+    eawp.state.wind    += K.block<3,1>(3,3) * eawp.innovations.V_pitot; 
+    eawp.state.offset  += K.block<3,1>(6,3) * eawp.innovations.V_pitot;
+
+    // Covariance update
+    eawp.P = (EKF_Aw_Cov::Identity() - K * G) * eawp.P;
+  }
+
+
+  
   //std::cout << "Cov matrix:\n" << eawp.P << std::endl;
   //std::cout << "S inverse:\n" << S.inverse() << std::endl;
   //std::cout << "K V_body V_gnd:\n" << K.block<3,3>(0,0) * eawp.innovations.V_gnd << std::endl;
   //std::cout << "K V_body Accel_filt:\n" << K.block<3,3>(0,3) * eawp.innovations.accel_filt << std::endl;
   //std::cout << "K:\n" << K << std::endl;
 
-  // State update using V_gnd
-  eawp.state.V_body  += K.block<3,3>(0,0) * eawp.innovations.V_gnd; 
-  eawp.state.wind    += K.block<3,3>(3,0) * eawp.innovations.V_gnd; 
-  eawp.state.offset  += K.block<3,3>(6,0) * eawp.innovations.V_gnd;
-
-  // State update using a_y_filt
-  eawp.state.V_body  += K.block<3,3>(0,3) * eawp.innovations.accel_filt; 
-  eawp.state.wind    += K.block<3,3>(3,3) * eawp.innovations.accel_filt; 
-  eawp.state.offset  += K.block<3,3>(6,3) * eawp.innovations.accel_filt;
-
-  // State update using V_pitot (if available)
-  eawp.state.V_body  += K.block<3,1>(0,3) * eawp.innovations.V_pitot; 
-  eawp.state.wind    += K.block<3,1>(3,3) * eawp.innovations.V_pitot; 
-  eawp.state.offset  += K.block<3,1>(6,3) * eawp.innovations.V_pitot;
-
-  // Covariance update
-  eawp.P = (EKF_Aw_Cov::Identity() - K * G) * eawp.P;
+  
 
 }
 
@@ -833,6 +859,15 @@ struct NedCoor_f ekf_aw_get_offset(void) // TO DO: use right type instead of NED
   return w;
 }
 
+struct ekfHealth ekf_aw_get_health(void)
+{
+  const struct ekfHealth w = {
+    .healthy = eawp.health.healthy,
+    .crashes_n = eawp.health.crashes_n
+  };
+  return w;
+}
+
 void ekf_aw_set_speed_body(struct NedCoor_f *s)
 {
   eawp.state.V_body(0) = s->x;
@@ -856,6 +891,11 @@ void ekf_aw_set_offset(struct NedCoor_f *s)
   //printf("Offset was set to %f %f %f",eawp.state.offset(0),eawp.state.offset(1),eawp.state.offset(2));
 }
 
+void ekf_aw_reset_health(void)
+{
+  eawp.health.healthy = true;
+  eawp.health.crashes_n = 0;
+}
 
 // Fx Forces functions
 float fx_fuselage(float *skew,float *aoa,float *V_a){
