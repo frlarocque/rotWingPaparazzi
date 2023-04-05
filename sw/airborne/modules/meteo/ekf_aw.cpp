@@ -548,7 +548,14 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
   // Propagate state by Euler Integration
   Vector3f state_dev = Vector3f::Zero();
   state_dev = -eawp.inputs.rates.cross(eawp.state.V_body)+quat.toRotationMatrix().transpose() * gravity + eawp.inputs.accel; // Verified and compared to Matlab output
-  eawp.state.V_body += state_dev * dt;
+  
+  if (state_dev.array().isNaN().any()){
+    eawp.health.healthy = false;
+    eawp.health.crashes_n += 1;
+  }
+  else{
+    eawp.state.V_body += state_dev * dt;
+  }
 
   /////////////////////////////////
   //    Propagate Covariance     //
