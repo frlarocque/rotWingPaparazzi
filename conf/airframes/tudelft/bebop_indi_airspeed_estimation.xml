@@ -41,8 +41,39 @@
       <define name="FILE_LOGGER_PATH" value="/data/ftp/internal_000"/>
     </module>
 
-  <!--Airspeed estimation using EKF-->
-  <module name="ekf_aw"/>
+    <!--Airspeed estimation using EKF-->
+    <module name="ekf_aw">
+      <define name="PERIODIC_FREQUENCY_AIRSPEED_EKF" value="50" description="Airspeed periodic frequency"/>
+      <define name="PERIODIC_FREQUENCY_AIRSPEED_EKF_FETCH" value="50" description="Airspeed periodic fetch frequency"/>
+    
+      <define name="EKF_AW_P0_V_body"  value="1.E-2f" description="Initial covariance body velocity"/>
+      <define name="EKF_AW_P0_mu"      value="1.E-6f" description="Initial covariance wind"/>
+      <define name="EKF_AW_P0_offset"  value="1.E-10f" description="Initial covariance offset"/>
+
+      <define name="EKF_AW_Q_accel"  value="2.5E-3f" description="Accel process noise"/>
+      <define name="EKF_AW_Q_gyro"   value="5.E-6f"  description="Gyro process noise"/>
+      <define name="EKF_AW_Q_mu"     value="3.E-6f"  description="Wind process noise"/>
+      <define name="EKF_AW_Q_offset" value="1.E-10f" description="Offset process noise"/>
+
+      <define name="EKF_AW_R_V_gnd"        value="1.E-6f" description="GPS Velocity measurement noise"/>
+      <define name="EKF_AW_R_accel_filt_x" value="1.E-5f" description="Filtered x accel measurement noise"/>
+      <define name="EKF_AW_R_accel_filt_y" value="1.E-5f" description="Filtered y accel measurement noise"/>
+      <define name="EKF_AW_R_accel_filt_z" value="1.E-5f" description="Filtered z accel measurement noise"/>
+      <define name="EKF_AW_R_V_pitot"      value="1.E-5f" description="Pitot Tube Velocity measurement noise"/>
+
+      <define name="EKF_AW_WING_INSTALLED"   value="false" description="Use wing contribution"/>
+      <define name="EKF_AW_USE_MODEL_BASED"  value="false" description="Use model based to augment filter"/>
+      <define name="EKF_AW_USE_BETA"         value="false" description="Use beta to estimate sideforce"/>
+      <define name="EKF_AW_PROPAGATE_OFFSET" value="false" description="Propagate the offset state"/>
+
+      <define name="EKF_AW_VEHICLE_MASS" value="0.5" description="Mass of the vehicle"/>
+
+      <define name="EKF_AW_K1_FX_DRAG" value="0.f" description="Drag coefficient linear to u used if use model based is set to false"/>
+      <define name="EKF_AW_K2_FX_DRAG" value="-12E-3f" description="Drag coefficient linear to u^2 used if use model based is set to false"/>
+
+      <define name="EKF_AW_K_FY_BETA"  value="-1.7E-3f" description="Fy v (side velocity) coefficient"/>
+      <define name="EKF_AW_K_FY_V"     value="-2.3E-2f" description="Fy beta coefficient"/>
+    </module>
 
   </firmware>
 
