@@ -20,25 +20,42 @@
  */
 
 /**
- * @file firmwares/rotorcraft/guidance/guidance_indi_hybrid.h
+ * @file firmwares/rotorcraft/guidance/guidance_indi_rot_wing.h
  *
  * A guidance mode based on Incremental Nonlinear Dynamic Inversion
  * Come to ICRA2016 to learn more!
  *
  */
 
-#ifndef GUIDANCE_INDI_HYBRID_H
-#define GUIDANCE_INDI_HYBRID_H
+#ifndef GUIDANCE_INDI_ROT_WING_H
+#define GUIDANCE_INDI_ROT_WING_H
 
 #include "std.h"
 #include "math/pprz_algebra_int.h"
 #include "math/pprz_algebra_float.h"
 #include "filters/high_pass_filter.h"
+#include "firmwares/rotorcraft/guidance.h"
+#include "firmwares/rotorcraft/stabilization.h"
 
-extern void guidance_indi_enter(void);
-extern void guidance_indi_run(float *heading_sp);
-extern void stabilization_attitude_set_setpoint_rp_quat_f(struct FloatEulers* indi_rp_cmd, bool in_flight, int32_t heading);
+// TODO change names for _indi_hybrid_
+
 extern void guidance_indi_init(void);
+extern void guidance_indi_enter(void);
+
+enum GuidanceIndiHybrid_HMode {
+  GUIDANCE_INDI_HYBRID_H_POS,
+  GUIDANCE_INDI_HYBRID_H_SPEED,
+  GUIDANCE_INDI_HYBRID_H_ACCEL
+};
+
+enum GuidanceIndiHybrid_VMode {
+  GUIDANCE_INDI_HYBRID_V_POS,
+  GUIDANCE_INDI_HYBRID_V_SPEED,
+  GUIDANCE_INDI_HYBRID_V_ACCEL
+};
+
+extern struct StabilizationSetpoint guidance_indi_run(struct FloatVect3 *accep_sp, float heading_sp);
+extern struct StabilizationSetpoint guidance_indi_run_mode(bool in_flight, struct HorizontalGuidance *gh, struct VerticalGuidance *gv, enum GuidanceIndiHybrid_HMode h_mode, enum GuidanceIndiHybrid_VMode v_mode);
 extern void guidance_indi_propagate_filters(void);
 
 struct guidance_indi_hybrid_params {
@@ -54,6 +71,8 @@ extern float guidance_indi_specific_force_gain;
 extern float guidance_indi_max_airspeed;
 extern float nav_max_speed;
 extern bool take_heading_control;
+extern bool force_forward;       ///< forward flight for hybrid nav
+
 extern float guidance_indi_max_bank;
 extern float push_first_order_constant;
 extern float a_diff_limit;
@@ -67,4 +86,4 @@ extern float roll_priority_factor;
 extern float thrust_priority_factor;
 extern float pusher_priority_factor;
 
-#endif /* GUIDANCE_INDI_HYBRID_H */
+#endif /* GUIDANCE_INDI_ROT_WING_H */
