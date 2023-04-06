@@ -8,7 +8,7 @@
 #include "modules/meteo/ekf_aw.h"
 
 
-/* Main EKF structure */
+// EKF structure
 struct ekfAw {
 
   // States
@@ -54,6 +54,7 @@ extern float tau_filter_low;
 
 extern struct ekfAw ekf_aw;
 
+// Handlers
 #define ekf_aw_wrapper_reset(_v) { \
   ekf_aw.reset = false;  \
   ekf_aw_reset();                  \

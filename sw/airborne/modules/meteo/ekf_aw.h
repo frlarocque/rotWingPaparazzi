@@ -80,7 +80,7 @@ extern void ekf_aw_update_params(void);
 extern void ekf_aw_reset_health(void);
 
 
-
+// Handlers
 #define ekf_aw_update_Q_accel(_v) { \
   ekf_aw_params.Q_accel = _v; \
   ekf_aw_update_params(); \
