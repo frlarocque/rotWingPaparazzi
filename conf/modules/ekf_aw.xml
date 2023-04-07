@@ -34,6 +34,9 @@
     <define name="EKF_AW_K1_FX_DRAG" value="0.f" description="Drag coefficient linear to u used if use model based is set to false"/>
     <define name="EKF_AW_K2_FX_DRAG" value="0.f" description="Drag coefficient linear to u^2 used if use model based is set to false"/>
 
+    <define name="EKF_AW_K_FY_BETA"  value="1e-00f" description="Fy v (side velocity) coefficient"/>
+    <define name="EKF_AW_K_FY_V"     value="1e-00f" description="Fy beta coefficient"/>
+
     <define name="EKF_AW_K1_FX_FUSELAGE"  value="1e-00f" description="Fx Fuselage Coeff"/>
     <define name="EKF_AW_K2_FX_FUSELAGE"  value="1e-00f" description="Fx Fuselage Coeff"/>
     <define name="EKF_AW_K3_FX_FUSELAGE"  value="1e-00f" description="Fx Fuselage Coeff"/>
@@ -55,9 +58,6 @@
     <define name="EKF_AW_K1_FX_ELEV"  value="1e-00f" description="Fx Elevator Coeff"/>
     <define name="EKF_AW_K2_FX_ELEV"  value="1e-00f" description="Fx Elevator Coeff"/>
     <define name="EKF_AW_K3_FX_ELEV"  value="1e-00f" description="Fx Elevator Coeff"/>
-
-    <define name="EKF_AW_K_FY_BETA"  value="1e-00f" description="Fy v (side velocity) coefficient"/>
-    <define name="EKF_AW_K_FY_V"     value="1e-00f" description="Fy beta coefficient"/>
 
     <define name="EKF_AW_K1_FZ_FUSELAGE"  value="1e-00f" description="Fz Fuselage Coeff"/>
     <define name="EKF_AW_K2_FZ_FUSELAGE"  value="1e-00f" description="Fz Fuselage Coeff"/>
