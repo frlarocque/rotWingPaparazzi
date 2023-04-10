@@ -37,6 +37,11 @@ struct ekfAw {
   struct FloatVect3 innov_acc_filt;
   float innov_V_pitot;
 
+  // Covariance
+  float meas_cov[7];
+  float state_cov[9];
+  float process_cov[9];
+
   // Other
   bool reset;
   struct NedCoor_f wind_guess;

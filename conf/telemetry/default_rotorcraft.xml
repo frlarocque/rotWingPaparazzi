@@ -38,6 +38,7 @@
       <message name="WIND_INFO_RET"            period="1."/>
       <message name="AHRS_REF_QUAT"            period="0.5"/>
       <message name="AIRSPEED_WIND_ESTIMATOR_EKF" period="0.05"/>
+      <message name="AIRSPEED_WIND_ESTIMATOR_EKF_COV" period="0.5"/>
     </mode>
 
     <mode name="ppm">

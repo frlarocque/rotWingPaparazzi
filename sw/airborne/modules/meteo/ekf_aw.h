@@ -45,8 +45,9 @@ struct ekfAwParameters {
     float k_fz_elev[2];
 
   // Other options
-  bool use_model;
+  bool use_model[3];
   bool propagate_offset;
+  bool quick_convergence;
 };
 
 struct ekfHealth{
@@ -70,6 +71,10 @@ extern struct NedCoor_f ekf_aw_get_offset(void);
 extern struct FloatVect3 ekf_aw_get_innov_V_gnd(void);
 extern struct FloatVect3 ekf_aw_get_innov_accel_filt(void);
 extern float ekf_aw_get_innov_V_pitot(void);
+extern void ekf_aw_get_meas_cov(float meas_cov[7]);
+extern void ekf_aw_get_state_cov(float state_cov[9]);
+extern void ekf_aw_get_process_cov(float process_cov[9]);
+
 extern void ekf_aw_set_speed_body(struct NedCoor_f *s);
 extern void ekf_aw_set_wind(struct NedCoor_f *s);
 extern void ekf_aw_set_offset(struct NedCoor_f *s);

@@ -10,6 +10,10 @@
 
 #include "autopilot.h"
 
+#ifndef EKF_AW_WRAPPER_DEBUG
+#define EKF_AW_WRAPPER_DEBUG   false
+#endif
+
 #if PERIODIC_TELEMETRY
 #include "modules/datalink/telemetry.h"
 
@@ -42,6 +46,34 @@ static void send_airspeed_wind_ekf(struct transport_tx *trans, struct link_devic
                               &ekf_aw.Vg_NED.z);
                               
 }
+#if EKF_AW_WRAPPER_DEBUG
+  // Telemetry Message function
+  static void send_airspeed_wind_ekf_cov(struct transport_tx *trans, struct link_device *dev)
+  {
+    pprz_msg_send_AIRSPEED_WIND_ESTIMATOR_EKF_COV(trans, dev, AC_ID,
+                                &ekf_aw.process_cov[0],
+                                &ekf_aw.process_cov[3],
+                                &ekf_aw.process_cov[6],
+                                &ekf_aw.process_cov[7],
+                                &ekf_aw.process_cov[8],
+                                &ekf_aw.process_cov[9],
+                                &ekf_aw.meas_cov[0],
+                                &ekf_aw.meas_cov[3],
+                                &ekf_aw.meas_cov[4],
+                                &ekf_aw.meas_cov[5],
+                                &ekf_aw.meas_cov[6],
+                                &ekf_aw.state_cov[0],
+                                &ekf_aw.state_cov[1],
+                                &ekf_aw.state_cov[2],
+                                &ekf_aw.state_cov[3],
+                                &ekf_aw.state_cov[4],
+                                &ekf_aw.state_cov[5],
+                                &ekf_aw.state_cov[6],
+                                &ekf_aw.state_cov[7],
+                                &ekf_aw.state_cov[8]);
+                                
+  }
+#endif
 #endif
 
 // RPM ABI Event
@@ -114,6 +146,9 @@ void ekf_aw_wrapper_init(void){
 
   #if PERIODIC_TELEMETRY
     register_periodic_telemetry(DefaultPeriodic, PPRZ_MSG_ID_AIRSPEED_WIND_ESTIMATOR_EKF, send_airspeed_wind_ekf);
+    #if (EKF_AW_WRAPPER_DEBUG)
+      register_periodic_telemetry(DefaultPeriodic, PPRZ_MSG_ID_AIRSPEED_WIND_ESTIMATOR_EKF_COV, send_airspeed_wind_ekf_cov);
+    #endif
   #endif
 
   // Init EKF Filter
@@ -180,6 +215,14 @@ void ekf_aw_wrapper_periodic(void){
   ekf_aw.innov_V_gnd = ekf_aw_get_innov_V_gnd();
   ekf_aw.innov_acc_filt = ekf_aw_get_innov_accel_filt();
   ekf_aw.innov_V_pitot = ekf_aw_get_innov_V_pitot();
+
+  if (EKF_AW_WRAPPER_DEBUG){
+    // Get covariance
+    ekf_aw_get_meas_cov(ekf_aw.meas_cov);
+    ekf_aw_get_state_cov(ekf_aw.state_cov);
+    ekf_aw_get_process_cov(ekf_aw.process_cov);
+  }
+  
 
 
 };

@@ -1753,7 +1753,28 @@
 
     <!-- 194 is free -->
     <!-- 195 is free -->
-    <!-- 196 is free -->
+    <message name="AIRSPEED_WIND_ESTIMATOR_EKF_COV" id="196">
+      <field name="Q_accel"     type="float" unit="-"/>
+      <field name="Q_gyro"     type="float" unit="-"/>
+      <field name="Q_mu_x"     type="float" unit="-"/>
+      <field name="Q_mu_y"      type="float" unit="-"/>
+      <field name="Q_mu_z"      type="float" unit="-"/>
+      <field name="Q_k"      type="float" unit="-"/>
+      <field name="R_V_gnd"      type="float" unit="-"/>
+      <field name="R_accel_filt_x"      type="float" unit="-"/>
+      <field name="R_accel_filt_y"      type="float" unit="-"/>
+      <field name="R_accel_filt_z"      type="float" unit="-"/>
+      <field name="R_V_pitot"      type="float" unit="-"/>
+      <field name="P_u"  type="float" unit="-"/>
+      <field name="P_v"  type="float" unit="-"/>
+      <field name="P_w"  type="float" unit="-"/>
+      <field name="P_mu_x"  type="float" unit="-"/>
+      <field name="P_mu_y"  type="float" unit="-"/>
+      <field name="P_mu_z"  type="float" unit="-"/>
+      <field name="P_k_x"  type="float" unit="-"/>
+      <field name="P_k_y"  type="float" unit="-"/>
+      <field name="P_k_z"  type="float" unit="-"/>
+    </message>
 
     <message name="NPS_SENSORS_SCALED" id="197">
       <field name="acc_x"    type="float" />
