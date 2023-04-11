@@ -9,13 +9,29 @@
 #include "modules/core/abi.h"
 
 #include "autopilot.h"
+#include "modules/actuators/actuators.h"
 
 #ifndef EKF_AW_WRAPPER_DEBUG
 #define EKF_AW_WRAPPER_DEBUG   false
 #endif
+#ifndef EKF_AW_WRAPPER_ROT_WING_V3a
+#define EKF_AW_WRAPPER_ROT_WING_V3a true
+#endif
+
+#if EKF_AW_WRAPPER_ROTWING_V3a
+  #include "modules/rot_wing_drone/wing_rotation_controller_v3a.h"
+#endif
 
 #if PERIODIC_TELEMETRY
 #include "modules/datalink/telemetry.h"
+
+// TO DO: Get skew angle
+// TO DO: Get hover prop RPM
+// TO DO: Get pusher prop RPM
+// TO DO: implement circular wrap filter for psi angle
+// TO DO: implement quick convergence after takeoff
+// TO DO: side force transition
+// TO DO: modify force functions to simpler model (fuselage, elevator, hover propellers)
 
 // Telemetry Message function
 static void send_airspeed_wind_ekf(struct transport_tx *trans, struct link_device *dev)
@@ -222,7 +238,7 @@ void ekf_aw_wrapper_periodic(void){
   float sample_time = 1.0 / PERIODIC_FREQUENCY_AIRSPEED_EKF_FETCH;
 
   // Only propagate filter if in flight and altitude is higher than 0.5 m
-  if (autopilot_in_flight() & -stateGetPositionNed_f()->z>0.5){
+  if (autopilot_in_flight() & (-stateGetPositionNed_f()->z>0.5)){
     ekf_aw_propagate(&ekf_aw.acc,&ekf_aw.gyro, &ekf_aw.euler, &ekf_aw.RPM_pusher,ekf_aw.RPM_hover, &ekf_aw.skew, &ekf_aw.elevator_angle, &ekf_aw.Vg_NED, &ekf_aw.acc_filt, &ekf_aw.V_pitot,sample_time);
   }
   else{
@@ -296,21 +312,30 @@ void ekf_aw_wrapper_fetch(void){
   for(int8_t i=0; i<4; i++) {
     update_butterworth_2_low_pass(&filt_hover_prop_rpm[i], ekf_aw.last_RPM_hover[i]);
   }
-  update_butterworth_2_low_pass(&filt_pusher_prop_rpm, 0);
-  update_butterworth_2_low_pass(&filt_skew, 0);
-  update_butterworth_2_low_pass(&filt_elevator_pprz, 0);
-  update_butterworth_2_low_pass(&filt_airspeed_pitot, 0);
+  update_butterworth_2_low_pass(&filt_pusher_prop_rpm, ekf_aw.last_RPM_pusher);
+
+  update_butterworth_2_low_pass(&filt_skew, wing_rotation.wing_angle_rad);
+
+  // Get elevator pprz signal
+  int16_t *elev_pprz = &actuators_pprz[5];
+  // Calculate deflection angle in [deg]
+  float de = -0.004885417 * *elev_pprz + 36.6;
+  update_butterworth_2_low_pass(&filt_elevator_pprz, de);
+  update_butterworth_2_low_pass(&filt_airspeed_pitot, stateGetAirspeed_f());
 };
 
 // ABI callback that obtains the RPM from a module
 static void rpm_cb(uint8_t sender_id __attribute__((unused)), uint16_t * rpm, uint8_t num_act)
 {
-  int8_t i;
-  for (i = 0; i < num_act; i++) {
-    ekf_aw.last_RPM_hover[i] = (rpm[i] - get_servo_min(i));
-    ekf_aw.last_RPM_hover[i] *= (MAX_PPRZ / (float)(get_servo_max(i) - get_servo_min(i)));
-    Bound(ekf_aw.last_RPM_hover[i], 0, MAX_PPRZ);
-  }
+  if (num_act>5){
+  ekf_aw.last_RPM_hover[0] = rpm[0];
+  ekf_aw.last_RPM_hover[0] = rpm[1];
+  ekf_aw.last_RPM_hover[0] = rpm[2];
+  ekf_aw.last_RPM_hover[0] = rpm[3];
+
+  ekf_aw.last_RPM_pusher = rpm[4];
+  
   time_of_rpm = get_sys_time_float();
   //printf("Got RPM of %f",*rpm);
+  }
 };

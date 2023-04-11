@@ -22,10 +22,12 @@ struct ekfAw {
   struct FloatEulers euler; /// Euler angles
   
   float last_RPM_hover[4]; // Value obtained from ABI Callback
+  float last_RPM_pusher; // Value obtained from ABI Callback
   float RPM_hover[4]; /// Hover motor RPM
   float RPM_pusher; /// Pusher motor RPM
   float skew; /// Skew
   float elevator_angle;
+  
   
   // Measurements
   struct FloatVect3 Vg_NED; /// Ground Speed
