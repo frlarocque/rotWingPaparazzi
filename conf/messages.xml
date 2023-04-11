@@ -1752,7 +1752,24 @@
     </message>
 
     <!-- 194 is free -->
-    <!-- 195 is free -->
+    <message name="AIRSPEED_WIND_ESTIMATOR_EKF_FORCES" id="195">
+      <field name="fuselage_x"     type="float" unit="-"/>
+      <field name="fuselage_y"     type="float" unit="-"/>
+      <field name="fuselage_z"     type="float" unit="-"/>
+      <field name="wing_x"     type="float" unit="-"/>
+      <field name="wing_y"     type="float" unit="-"/>
+      <field name="wing_z"     type="float" unit="-"/>
+      <field name="elevator_x"     type="float" unit="-"/>
+      <field name="elevator_y"     type="float" unit="-"/>
+      <field name="elevator_z"     type="float" unit="-"/>
+      <field name="hover_x"     type="float" unit="-"/>
+      <field name="hover_y"     type="float" unit="-"/>
+      <field name="hover_z"     type="float" unit="-"/>
+      <field name="pusher_x"     type="float" unit="-"/>
+      <field name="pusher_y"     type="float" unit="-"/>
+      <field name="pusher_z"     type="float" unit="-"/>
+    </message>
+    
     <message name="AIRSPEED_WIND_ESTIMATOR_EKF_COV" id="196">
       <field name="Q_accel"     type="float" unit="-"/>
       <field name="Q_gyro"     type="float" unit="-"/>

@@ -73,6 +73,28 @@ static void send_airspeed_wind_ekf(struct transport_tx *trans, struct link_devic
                                 &ekf_aw.state_cov[8]);
                                 
   }
+
+  // Telemetry Message function
+  static void send_airspeed_wind_ekf_forces(struct transport_tx *trans, struct link_device *dev)
+  {
+    pprz_msg_send_AIRSPEED_WIND_ESTIMATOR_EKF_FORCES(trans, dev, AC_ID,
+                                &ekf_aw.fuselage_force[0],
+                                &ekf_aw.fuselage_force[1],
+                                &ekf_aw.fuselage_force[2],
+                                &ekf_aw.wing_force[0],
+                                &ekf_aw.wing_force[1],
+                                &ekf_aw.wing_force[2],
+                                &ekf_aw.elevator_force[0],
+                                &ekf_aw.elevator_force[1],
+                                &ekf_aw.elevator_force[2],
+                                &ekf_aw.hover_force[0],
+                                &ekf_aw.hover_force[1],
+                                &ekf_aw.hover_force[2],
+                                &ekf_aw.pusher_force[0],
+                                &ekf_aw.pusher_force[1],
+                                &ekf_aw.pusher_force[2]);
+                                
+  }
 #endif
 #endif
 
@@ -148,6 +170,7 @@ void ekf_aw_wrapper_init(void){
     register_periodic_telemetry(DefaultPeriodic, PPRZ_MSG_ID_AIRSPEED_WIND_ESTIMATOR_EKF, send_airspeed_wind_ekf);
     #if (EKF_AW_WRAPPER_DEBUG)
       register_periodic_telemetry(DefaultPeriodic, PPRZ_MSG_ID_AIRSPEED_WIND_ESTIMATOR_EKF_COV, send_airspeed_wind_ekf_cov);
+      register_periodic_telemetry(DefaultPeriodic, PPRZ_MSG_ID_AIRSPEED_WIND_ESTIMATOR_EKF_FORCES, send_airspeed_wind_ekf_forces);
     #endif
   #endif
 
@@ -221,6 +244,13 @@ void ekf_aw_wrapper_periodic(void){
     ekf_aw_get_meas_cov(ekf_aw.meas_cov);
     ekf_aw_get_state_cov(ekf_aw.state_cov);
     ekf_aw_get_process_cov(ekf_aw.process_cov);
+
+    // Get forces
+    ekf_aw_get_fuselage_force(ekf_aw.fuselage_force);
+    ekf_aw_get_wing_force(ekf_aw.wing_force);
+    ekf_aw_get_elevator_force(ekf_aw.elevator_force);
+    ekf_aw_get_hover_force(ekf_aw.hover_force);
+    ekf_aw_get_pusher_force(ekf_aw.pusher_force);
   }
   
 

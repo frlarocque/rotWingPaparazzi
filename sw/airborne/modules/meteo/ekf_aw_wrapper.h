@@ -40,7 +40,14 @@ struct ekfAw {
   // Covariance
   float meas_cov[7];
   float state_cov[9];
-  float process_cov[9];
+  float process_cov[12];
+
+  // Forces
+  float fuselage_force[3];
+  float wing_force[3];
+  float elevator_force[3];
+  float hover_force[3];
+  float pusher_force[3];
 
   // Other
   bool reset;

@@ -74,6 +74,11 @@ extern float ekf_aw_get_innov_V_pitot(void);
 extern void ekf_aw_get_meas_cov(float meas_cov[7]);
 extern void ekf_aw_get_state_cov(float state_cov[9]);
 extern void ekf_aw_get_process_cov(float process_cov[9]);
+extern void ekf_aw_get_fuselage_force(float force[3]);
+extern void ekf_aw_get_wing_force(float force[3]);
+extern void ekf_aw_get_elevator_force(float force[3]);
+extern void ekf_aw_get_hover_force(float force[3]);
+extern void ekf_aw_get_pusher_force(float force[3]);
 
 extern void ekf_aw_set_speed_body(struct NedCoor_f *s);
 extern void ekf_aw_set_wind(struct NedCoor_f *s);

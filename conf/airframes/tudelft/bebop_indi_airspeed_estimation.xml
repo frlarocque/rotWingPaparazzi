@@ -62,7 +62,9 @@
       <define name="EKF_AW_R_V_pitot"      value="1.E-5f" description="Pitot Tube Velocity measurement noise"/>
 
       <define name="EKF_AW_WING_INSTALLED"   value="false" description="Use wing contribution"/>
-      <define name="EKF_AW_USE_MODEL_BASED"  value="false" description="Use model based to augment filter"/>
+      <define name="EKF_AW_USE_MODEL_BASED_X"  value="false" description="Use model based to augment filter"/>
+      <define name="EKF_AW_USE_MODEL_BASED_Y"  value="false" description="Use model based to augment filter"/>
+      <define name="EKF_AW_USE_MODEL_BASED_Z"  value="false" description="Use model based to augment filter"/>
       <define name="EKF_AW_USE_BETA"         value="false" description="Use beta to estimate sideforce"/>
       <define name="EKF_AW_PROPAGATE_OFFSET" value="false" description="Propagate the offset state"/>
 

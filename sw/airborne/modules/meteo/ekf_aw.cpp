@@ -696,8 +696,8 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
   if (ekf_aw_params.use_model[2]){
     // Calculate forces in x axis
     eawp.forces.fuselage(2) = fz_fuselage(&eawp.inputs.skew,&aoa,&V_a);    
-    eawp.forces.elevator(2) = EKF_AW_WING_INSTALLED ? fz_elevator(&eawp.inputs.elevator_angle, &V_a) : 0;
-    eawp.forces.wing(2)     = fz_wing(&eawp.inputs.skew,&aoa,&V_a);    
+    eawp.forces.elevator(2) = fz_elevator(&eawp.inputs.elevator_angle, &V_a);
+    eawp.forces.wing(2)     = EKF_AW_WING_INSTALLED ? fz_wing(&eawp.inputs.skew,&aoa,&V_a) : 0;    
     eawp.forces.hover(2)    = fz_hover(eawp.inputs.RPM_hover);
 
     // Acceleration is sum of forces
@@ -719,6 +719,7 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
 
   //std::cout << "State wind:\n" << eawp.state.wind << std::endl;
   //std::cout << "V_body:\n" << eawp.state.V_body << std::endl;
+  //std::cout << "Q :\n" << eawp.Q(EKF_AW_Q_k_x_index,EKF_AW_Q_k_x_index) << std::endl;
   //std::cout << "V_body_gnd:\n" << quat.toRotationMatrix() * eawp.state.V_body << std::endl;
   //std::cout << "V_gnd:\n" << eawp.measurements.V_gnd << std::endl;
   //std::cout << "Innov V_gnd:\n" << eawp.innovations.V_gnd << std::endl;
@@ -881,7 +882,6 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
   }
 
   //std::cout << "subs:\n" << EKF_Aw_Cov::Identity() - K * G  << std::endl;
-
   //std::cout << "Cov matrix:\n" << eawp.P << std::endl;
   //std::cout << "S inverse:\n" << S.inverse() << std::endl;
   //std::cout << "K V_body V_gnd:\n" << K.block<3,3>(0,0) * eawp.innovations.V_gnd << std::endl;
@@ -890,6 +890,7 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
 
 }
 
+// Getter Functions
 struct NedCoor_f ekf_aw_get_speed_body(void)
 {
   const struct NedCoor_f s = {
@@ -948,6 +949,12 @@ struct FloatVect3 ekf_aw_get_innov_accel_filt(void)
   return w;
 }
 
+float ekf_aw_get_innov_V_pitot(void)
+{
+  const float w = eawp.innovations.V_pitot;
+  return w;
+}
+
 void ekf_aw_get_meas_cov(float meas_cov[7])
 {
   float diagonal[EKF_AW_R_SIZE];
@@ -968,7 +975,7 @@ void ekf_aw_get_state_cov(float state_cov[9])
   memcpy(state_cov, diagonal, 9 * sizeof(float));
 }
 
-void ekf_aw_get_process_cov(float process_cov[9])
+void ekf_aw_get_process_cov(float process_cov[12])
 {
   float diagonal[EKF_AW_Q_SIZE];
   for(int8_t i=0; i<EKF_AW_Q_SIZE; i++) {
@@ -978,12 +985,34 @@ void ekf_aw_get_process_cov(float process_cov[9])
   memcpy(process_cov, diagonal, 9 * sizeof(float));
 }
 
-float ekf_aw_get_innov_V_pitot(void)
+void ekf_aw_get_fuselage_force(float force[3])
 {
-  const float w = eawp.innovations.V_pitot;
-  return w;
+  memcpy(force, eawp.forces.fuselage.data(), 3 * sizeof(float));
 }
 
+void ekf_aw_get_wing_force(float force[3])
+{
+  memcpy(force, eawp.forces.wing.data(), 3 * sizeof(float));
+}
+
+void ekf_aw_get_elevator_force(float force[3])
+{
+  memcpy(force, eawp.forces.elevator.data(), 3 * sizeof(float));
+}
+
+void ekf_aw_get_hover_force(float force[3])
+{
+  memcpy(force, eawp.forces.hover.data(), 3 * sizeof(float));
+}
+
+void ekf_aw_get_pusher_force(float force[3])
+{
+  memcpy(force, eawp.forces.pusher.data(), 3 * sizeof(float));
+}
+
+
+
+// Setter Functions
 void ekf_aw_set_speed_body(struct NedCoor_f *s)
 {
   eawp.state.V_body(0) = s->x;
@@ -1010,6 +1039,8 @@ void ekf_aw_reset_health(void)
   eawp.health.healthy = true;
   eawp.health.crashes_n = 0;
 }
+
+// Forces functions
 
 // Fx Forces functions
 float fx_fuselage(float *skew,float *aoa,float *V_a){
