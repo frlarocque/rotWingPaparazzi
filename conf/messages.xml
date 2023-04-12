@@ -1753,21 +1753,25 @@
 
     <!-- 194 is free -->
     <message name="AIRSPEED_WIND_ESTIMATOR_EKF_FORCES" id="195">
-      <field name="fuselage_x"     type="float" unit="-"/>
-      <field name="fuselage_y"     type="float" unit="-"/>
-      <field name="fuselage_z"     type="float" unit="-"/>
-      <field name="wing_x"     type="float" unit="-"/>
-      <field name="wing_y"     type="float" unit="-"/>
-      <field name="wing_z"     type="float" unit="-"/>
-      <field name="elevator_x"     type="float" unit="-"/>
-      <field name="elevator_y"     type="float" unit="-"/>
-      <field name="elevator_z"     type="float" unit="-"/>
-      <field name="hover_x"     type="float" unit="-"/>
-      <field name="hover_y"     type="float" unit="-"/>
-      <field name="hover_z"     type="float" unit="-"/>
-      <field name="pusher_x"     type="float" unit="-"/>
-      <field name="pusher_y"     type="float" unit="-"/>
-      <field name="pusher_z"     type="float" unit="-"/>
+      <field name="fuselage_x"     type="float" unit="N"/>
+      <field name="fuselage_y"     type="float" unit="N"/>
+      <field name="fuselage_z"     type="float" unit="N"/>
+      <field name="wing_x"     type="float" unit="N"/>
+      <field name="wing_y"     type="float" unit="N"/>
+      <field name="wing_z"     type="float" unit="N"/>
+      <field name="elevator_x"     type="float" unit="N"/>
+      <field name="elevator_y"     type="float" unit="N"/>
+      <field name="elevator_z"     type="float" unit="N"/>
+      <field name="hover_x"     type="float" unit="N"/>
+      <field name="hover_y"     type="float" unit="N"/>
+      <field name="hover_z"     type="float" unit="N"/>
+      <field name="pusher_x"     type="float" unit="N"/>
+      <field name="pusher_y"     type="float" unit="N"/>
+      <field name="pusher_z"     type="float" unit="N"/>
+      <field name="skew"     type="float" unit="rad"/>
+      <field name="elevator_angle"     type="float" unit="rad"/>
+      <field name="pusher_prop"     type="float" unit="RPM"/>
+      <field name="hover_prop"     type="float" unit="RPM"/>
     </message>
     
     <message name="AIRSPEED_WIND_ESTIMATOR_EKF_COV" id="196">
