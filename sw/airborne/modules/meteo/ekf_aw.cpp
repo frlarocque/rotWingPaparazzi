@@ -558,7 +558,7 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
   else{
     eawp.R(EKF_AW_R_a_z_filt_index,EKF_AW_R_a_z_filt_index) = ekf_aw_params.R_accel_filt[2];
   }
-
+  
   // Increase wind covariance and reduce accelerometer covariance
   if (ekf_aw_params.quick_convergence){
     eawp.Q(EKF_AW_Q_mu_x_index,EKF_AW_Q_mu_x_index) = ekf_aw_params.Q_mu*1.0E2f;
@@ -1009,7 +1009,9 @@ void ekf_aw_get_pusher_force(float force[3])
 {
   memcpy(force, eawp.forces.pusher.data(), 3 * sizeof(float));
 }
-
+struct ekfAwParameters *ekf_aw_get_param_handle(void){
+  return &ekf_aw_params;
+};
 
 
 // Setter Functions

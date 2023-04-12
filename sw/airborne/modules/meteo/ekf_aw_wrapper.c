@@ -108,6 +108,7 @@ static void rpm_cb(uint8_t sender_id __attribute__((unused)), uint16_t * rpm, ui
 
 // Filter struct
 struct ekfAw ekf_aw; // Local wrapper
+static struct ekfAwParameters *ekf_params; ///< The EKF parameters
 
 // Define settings to change filter tau value
 float tau_filter_high = 10.;
@@ -184,6 +185,13 @@ void ekf_aw_wrapper_init(void){
   // Register ABI message
   AbiBindMsgRPM(RPM_SENSOR_ID, &RPM_ev, rpm_cb); // TO DO: test if it works with VSQP
 
+  //Get EKF param handle
+  ekf_params = ekf_aw_get_param_handle();
+
+  ekf_aw.in_air = false;
+  ekf_aw.internal_clock=0;
+  ekf_aw.time_last_on_gnd=0;
+
 };
 
 void ekf_aw_wrapper_periodic(void){
@@ -225,8 +233,18 @@ void ekf_aw_wrapper_periodic(void){
   // Sample time of EKF filter
   float sample_time = 1.0 / PERIODIC_FREQUENCY_AIRSPEED_EKF_FETCH;
 
+  set_in_air_status(autopilot_in_flight() & -stateGetPositionNed_f()->z>0.5)
+
   // Only propagate filter if in flight and altitude is higher than 0.5 m
-  if (autopilot_in_flight() & -stateGetPositionNed_f()->z>0.5){
+  if (ekf_aw.in_air){
+    if (ekf_aw.internal_clock-ekf_aw.time_last_on_ground<PERIODIC_FREQUENCY_AIRSPEED_EKF*10){
+      //printf("Initiating quick convergence\n"); //TO DO: implement it so it turns on 10 s after takeoff
+      ekf_params->quick_convergence = true;
+    }
+    else{
+      ekf_params->quick_convergence = false;
+    }
+    
     ekf_aw_propagate(&ekf_aw.acc,&ekf_aw.gyro, &ekf_aw.euler, &ekf_aw.RPM_pusher,ekf_aw.RPM_hover, &ekf_aw.skew, &ekf_aw.elevator_angle, &ekf_aw.Vg_NED, &ekf_aw.acc_filt, &ekf_aw.V_pitot,sample_time);
   }
   else{
@@ -258,7 +276,7 @@ void ekf_aw_wrapper_periodic(void){
   }
   
 
-
+  ekf_aw.internal_clock++;
 };
 
 // Function to get information from different modules and set it in the different filters
@@ -317,10 +335,20 @@ static void rpm_cb(uint8_t sender_id __attribute__((unused)), uint16_t * rpm, ui
 {
   int8_t i;
   for (i = 0; i < num_act; i++) {
-    ekf_aw.last_RPM_hover[i] = (rpm[i] - get_servo_min(i));
-    ekf_aw.last_RPM_hover[i] *= (MAX_PPRZ / (float)(get_servo_max(i) - get_servo_min(i)));
-    Bound(ekf_aw.last_RPM_hover[i], 0, MAX_PPRZ);
+    ekf_aw.last_RPM_hover[i] = rpm[i];
   }
   time_of_rpm = get_sys_time_float();
   //printf("Got RPM of %f",*rpm);
 };
+
+// set vehicle landed status data
+	void set_in_air_status(bool in_air)
+	{
+		if (!in_air) {
+			ekf_aw.time_last_on_ground = ekf_aw.internal_clock;
+
+		} else {
+			ekf_aw.time_last_in_air = ekf_aw.internal_clock;
+		}
+		ekf_aw.in_air = in_air;
+	}

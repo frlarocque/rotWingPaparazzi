@@ -52,15 +52,22 @@ struct ekfAw {
 
   // Other
   bool reset;
+  bool in_air;
   struct NedCoor_f wind_guess;
   struct NedCoor_f offset_guess;
   struct ekfHealth health; 
+  uint64_t internal_clock;
+  uint64_t time_last_on_gnd;
+  uint64_t time_last_in_air;
 
 };
 
 extern void ekf_aw_wrapper_init(void);
 extern void ekf_aw_wrapper_periodic(void);
 extern void ekf_aw_wrapper_fetch(void);
+
+extern void set_in_air_status(bool);
+
 
 extern float tau_filter_high;
 extern float tau_filter_low;
