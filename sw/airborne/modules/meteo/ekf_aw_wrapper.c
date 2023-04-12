@@ -108,7 +108,11 @@ static void send_airspeed_wind_ekf(struct transport_tx *trans, struct link_devic
                                 &ekf_aw.hover_force[2],
                                 &ekf_aw.pusher_force[0],
                                 &ekf_aw.pusher_force[1],
-                                &ekf_aw.pusher_force[2]);
+                                &ekf_aw.pusher_force[2],
+                                &ekf_aw.skew,
+                                &ekf_aw.elevator_angle,
+                                &ekf_aw.RPM_pusher,
+                                &ekf_aw.RPM_hover[0]);
                                 
   }
 #endif
@@ -310,16 +314,16 @@ void ekf_aw_wrapper_fetch(void){
 
   // TO DO: TO BE MODIFIED FOR EACH VEHICLE
   for(int8_t i=0; i<4; i++) {
-    update_butterworth_2_low_pass(&filt_hover_prop_rpm[i], ekf_aw.last_RPM_hover[i]);
+    update_butterworth_2_low_pass(&filt_hover_prop_rpm[i], ekf_aw.last_RPM_hover[i]*1.0f);
   }
-  update_butterworth_2_low_pass(&filt_pusher_prop_rpm, ekf_aw.last_RPM_pusher);
+  update_butterworth_2_low_pass(&filt_pusher_prop_rpm, ekf_aw.last_RPM_pusher*1.0f);
 
   update_butterworth_2_low_pass(&filt_skew, wing_rotation.wing_angle_rad);
 
   // Get elevator pprz signal
   int16_t *elev_pprz = &actuators_pprz[5];
   // Calculate deflection angle in [deg]
-  float de = -0.004885417 * *elev_pprz + 36.6;
+  float de = (-0.004885417 * *elev_pprz + 36.6)*3.14f/180.0f;
   update_butterworth_2_low_pass(&filt_elevator_pprz, de);
   update_butterworth_2_low_pass(&filt_airspeed_pitot, stateGetAirspeed_f());
 };
