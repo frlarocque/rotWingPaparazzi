@@ -28,6 +28,7 @@ struct ekfAw {
   float skew; /// Skew
   float elevator_angle;
   
+  
   // Measurements
   struct FloatVect3 Vg_NED; /// Ground Speed
   struct FloatVect3 acc_filt;  ///< Last accelerometer measurements
