@@ -28,6 +28,7 @@
 #include "modules/energy/electrical.h"
 #include "math/pprz_random.h"
 #include "modules/core/abi.h"
+#include "modules/actuators/actuators.h"
 
 /* By default enable the usage of the current sensing in the ESC telemetry */
 #ifndef UAVCAN_ACTUATORS_USE_CURRENT
@@ -166,6 +167,20 @@ static void actuators_uavcan_esc_status_cb(struct uavcan_iface_t *iface, CanardR
     electrical.current += uavcan2_telem[i].current;
   }
 #endif
+
+// Create struct for ABI
+struct rpm_act_t rpm_message;
+rpm_message.actuator_idx =  esc_idx;
+rpm_message.rpm = telem->rpm;
+
+// Send ABI message
+#ifdef SERVOS_UAVCAN1_NB
+AbiSendMsgRPM(RPM_SENSOR_ID, &rpm_message, SERVOS_UAVCAN1_NB);
+#endif
+#ifdef SERVOS_UAVCAN2_NB
+AbiSendMsgRPM(RPM_SENSOR_ID, &rpm_message, SERVOS_UAVCAN2_NB);
+#endif
+
 #endif
 }
 
@@ -210,31 +225,5 @@ void actuators_uavcan_commit(struct uavcan_iface_t *iface, int16_t *values, uint
   // Broadcast the raw command message on the interface
   uavcan_broadcast(iface, UAVCAN_EQUIPMENT_ESC_RAWCOMMAND_SIGNATURE, UAVCAN_EQUIPMENT_ESC_RAWCOMMAND_ID,
                    CANARD_TRANSFER_PRIORITY_HIGH, buffer, (offset + 7) / 8);
-
-
-  #ifdef SERVOS_UAVCAN1_NB
-    uint16_t uav_rpm1[SERVOS_UAVCAN1_NB];
-    // Find the correct telemetry
-    struct actuators_uavcan_telem_t *telem1 = NULL;
-    telem1 = uavcan1_telem;
-
-    for(uint8_t esc_idx=0; esc_idx<SERVOS_UAVCAN1_NB; esc_idx++) {
-      uav_rpm1[esc_idx] = telem1[esc_idx].rpm;
-    }
-    // Send ABI message
-    AbiSendMsgRPM(RPM_SENSOR_ID, uav_rpm1, SERVOS_UAVCAN1_NB);
-  #endif
-  #ifdef SERVOS_UAVCAN2_NB
-    uint16_t uav_rpm2[SERVOS_UAVCAN2_NB];
-    // Find the correct telemetry
-    struct actuators_uavcan_telem_t *telem2 = NULL;
-    telem2 = uavcan2_telem;
-
-    for(uint8_t esc_idx=0; esc_idx<SERVOS_UAVCAN2_NB; esc_idx++) {
-      uav_rpm2[esc_idx] = telem2[esc_idx].rpm;
-    }
-    // Send ABI message
-    AbiSendMsgRPM(RPM_SENSOR_ID, uav_rpm2, SERVOS_UAVCAN2_NB);
-  #endif
 
 }

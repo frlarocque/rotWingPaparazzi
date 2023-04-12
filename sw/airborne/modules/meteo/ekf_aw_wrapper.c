@@ -20,6 +20,8 @@
 
 #if EKF_AW_WRAPPER_ROTWING_V3a
   #include "modules/rot_wing_drone/wing_rotation_controller_v3a.h"
+//#else
+//  #include "modules/rot_wing_drone/wing_rotation_controller_v3b.h"
 #endif
 
 #if PERIODIC_TELEMETRY
@@ -120,7 +122,8 @@ static void send_airspeed_wind_ekf(struct transport_tx *trans, struct link_devic
 
 // RPM ABI Event
 abi_event RPM_ev;
-static void rpm_cb(uint8_t sender_id __attribute__((unused)), uint16_t * rpm, uint8_t num_act);
+float time_of_rpm = 0.0;
+static void rpm_cb(uint8_t sender_id __attribute__((unused)), struct rpm_act_t *rpm_message, uint8_t num_act);
 
 // Filter struct
 struct ekfAw ekf_aw; // Local wrapper
@@ -149,8 +152,6 @@ Butterworth2LowPass filt_pusher_prop_rpm;
 Butterworth2LowPass filt_skew;
 Butterworth2LowPass filt_elevator_pprz;
 Butterworth2LowPass filt_airspeed_pitot;
-
-float time_of_rpm = 0.0;
 
 #ifndef PERIODIC_FREQUENCY_AIRSPEED_EKF_FETCH
 #define PERIODIC_FREQUENCY_AIRSPEED_EKF_FETCH 50
@@ -286,10 +287,12 @@ void ekf_aw_wrapper_fetch(void){
   update_butterworth_2_low_pass(&filt_groundspeed[2], stateGetSpeedNed_f()->z);
 
   // Transferring from NED to Body as body is not available right now
-  struct Int32Vect3 *ned_accel_i = stateGetAccelNed_i();
-  ned_accel_i->z += ACCEL_BFP_OF_REAL(-9.81); // Add gravity
-  struct Int32Vect3 body_accel_i;
-  int32_rmat_vmult(&body_accel_i, stateGetNedToBodyRMat_i(), ned_accel_i);
+  struct NedCoor_i *accel_tmp = stateGetAccelNed_i();
+  struct Int32Vect3 ned_accel_i,body_accel_i;
+  struct Int32RMat *ned_to_body_rmat = stateGetNedToBodyRMat_i();
+  VECT3_COPY(ned_accel_i, (*accel_tmp));
+  ned_accel_i.z += ACCEL_BFP_OF_REAL(-9.81); // Add gravity
+  int32_rmat_vmult(&body_accel_i, ned_to_body_rmat, &ned_accel_i);
   struct FloatVect3 body_accel_f;
   ACCELS_FLOAT_OF_BFP(body_accel_f, body_accel_i);
 
@@ -329,17 +332,30 @@ void ekf_aw_wrapper_fetch(void){
 };
 
 // ABI callback that obtains the RPM from a module
-static void rpm_cb(uint8_t sender_id __attribute__((unused)), uint16_t * rpm, uint8_t num_act)
+static void rpm_cb(uint8_t sender_id __attribute__((unused)), struct rpm_act_t * rpm_message, uint8_t num_act)
 {
-  if (num_act>5){
-  ekf_aw.last_RPM_hover[0] = rpm[0];
-  ekf_aw.last_RPM_hover[0] = rpm[1];
-  ekf_aw.last_RPM_hover[0] = rpm[2];
-  ekf_aw.last_RPM_hover[0] = rpm[3];
-
-  ekf_aw.last_RPM_pusher = rpm[4];
-  
+  // Sanity check that index is valid
+  if (rpm_message->actuator_idx<num_act){
+    // Assign rpm to right actuator
+    switch (rpm_message->actuator_idx) {
+      case 0:
+          ekf_aw.last_RPM_hover[0] = rpm_message->rpm;
+          break;
+      case 1:
+          ekf_aw.last_RPM_hover[1] = rpm_message->rpm;
+          break;
+      case 2:
+          ekf_aw.last_RPM_hover[2] = rpm_message->rpm;
+          break;
+      case 3:
+          ekf_aw.last_RPM_hover[3] = rpm_message->rpm;
+          break;
+      case 4:
+          ekf_aw.last_RPM_pusher = rpm_message->rpm;
+          break;
+      default:
+          break;
+    }  
   time_of_rpm = get_sys_time_float();
-  //printf("Got RPM of %f",*rpm);
   }
 };
