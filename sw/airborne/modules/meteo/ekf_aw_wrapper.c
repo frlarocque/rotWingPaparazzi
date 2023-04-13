@@ -250,7 +250,7 @@ void ekf_aw_wrapper_periodic(void){
   // Sample time of EKF filter
   float sample_time = 1.0 / PERIODIC_FREQUENCY_AIRSPEED_EKF_FETCH;
 
-  set_in_air_status(autopilot_in_flight() & -stateGetPositionNed_f()->z>1.0);
+  set_in_air_status(autopilot_in_flight() & (-stateGetPositionNed_f()->z>1.0));
 
   // Only propagate filter if in flight and altitude is higher than 0.5 m
   if (ekf_aw.in_air){
@@ -303,6 +303,7 @@ void ekf_aw_wrapper_fetch(void){
   update_butterworth_2_low_pass(&filt_groundspeed[1], stateGetSpeedNed_f()->y);
   update_butterworth_2_low_pass(&filt_groundspeed[2], stateGetSpeedNed_f()->z);
 
+  /*
   // Transferring from NED to Body as body is not available right now
   struct NedCoor_i *accel_tmp = stateGetAccelNed_i();
   struct Int32Vect3 ned_accel_i,body_accel_i;
@@ -312,11 +313,13 @@ void ekf_aw_wrapper_fetch(void){
   int32_rmat_vmult(&body_accel_i, ned_to_body_rmat, &ned_accel_i);
   struct FloatVect3 body_accel_f;
   ACCELS_FLOAT_OF_BFP(body_accel_f, body_accel_i);
+  */
 
   // If body accel available, can use this
-  //struct Int32Vect3 *body_accel_i;
-  //body_accel_i = stateGetAccelBody_i();
-  //ACCELS_FLOAT_OF_BFP(body_accel_f, *body_accel_i);
+  struct FloatVect3 body_accel_f;
+  struct Int32Vect3 *body_accel_i;
+  body_accel_i = stateGetAccelBody_i();
+  ACCELS_FLOAT_OF_BFP(body_accel_f, *body_accel_i);
   
 
   // Body accel

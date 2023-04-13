@@ -1102,16 +1102,20 @@ float fx_fy_hover(float *RPM_hover_mean, float *V){
 float fx_pusher(float *RPM_pusher, float *u){
   float Fx = 0;
 
-  // Take care of case where drone is flying backwards with pusher (quite rare)
-  if (*u>0){
-    Fx = ekf_aw_params.k_fx_push[0] * (*RPM_pusher * *RPM_pusher) +
-          ekf_aw_params.k_fx_push[1] * *RPM_pusher * *u +
-          ekf_aw_params.k_fx_push[2] * *u;
+  // Only generate a force if the pusher is turning
+  if (*RPM_pusher>500){
+    // Take care of case where drone is flying backwards with pusher (quite rare)
+      if (*u>0){
+        Fx = ekf_aw_params.k_fx_push[0] * (*RPM_pusher * *RPM_pusher) +
+              ekf_aw_params.k_fx_push[1] * *RPM_pusher * *u +
+              ekf_aw_params.k_fx_push[2] * *u;
 
+      }
+      else{
+        Fx = ekf_aw_params.k_fx_push[0] * (*RPM_pusher * *RPM_pusher);
+      };
   }
-  else{
-    Fx = ekf_aw_params.k_fx_push[0] * (*RPM_pusher * *RPM_pusher);
-  };
+  
 
   return Fx;
 }
