@@ -158,6 +158,9 @@ struct ekfAwPrivate {
 #ifndef EKF_AW_PROPAGATE_OFFSET
 #define EKF_AW_PROPAGATE_OFFSET false
 #endif
+#ifndef EKF_AW_USE_PITOT
+#define EKF_AW_USE_PITOT false
+#endif
 
 // Model Based Parameters
 #ifndef EKF_AW_VEHICLE_MASS
@@ -389,6 +392,9 @@ void ekf_aw_init(void)
   ekf_aw_params.R_V_gnd = EKF_AW_R_V_gnd;      ///< speed measurement noise
   ekf_aw_params.R_accel_filt[0] = EKF_AW_R_accel_filt_x; ekf_aw_params.R_accel_filt[1] = EKF_AW_R_accel_filt_y; ekf_aw_params.R_accel_filt[2] = EKF_AW_R_accel_filt_z; ///< filtered accel measurement noise
   ekf_aw_params.R_V_pitot = EKF_AW_R_V_pitot;      ///< airspeed measurement noise
+  
+  // Other options
+  ekf_aw_params.use_pitot = EKF_AW_USE_PITOT;
   ekf_aw_params.use_model[0] = EKF_AW_USE_MODEL_BASED_X;ekf_aw_params.use_model[1] = EKF_AW_USE_MODEL_BASED_Y;ekf_aw_params.use_model[2] = EKF_AW_USE_MODEL_BASED_Z;
   ekf_aw_params.propagate_offset = EKF_AW_PROPAGATE_OFFSET;
 
@@ -681,6 +687,10 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
     a_x = (ekf_aw_params.k_fx_drag[0]*u +
            ekf_aw_params.k_fx_drag[1]*u*u*sign_u +
            eawp.state.offset(0)*u*u*sign_u)/ekf_aw_params.vehicle_mass;
+
+    // Pusher prop
+    eawp.forces.pusher(0)   = fx_pusher(&eawp.inputs.RPM_pusher, &u);
+    a_x += eawp.forces.pusher(0)/ekf_aw_params.vehicle_mass;
   }
 
   // A_y
@@ -715,7 +725,7 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
   // Innovation
   eawp.innovations.V_gnd = eawp.measurements.V_gnd - (quat.toRotationMatrix() * eawp.state.V_body + eawp.state.wind); // Ground speed in NED Frame
   eawp.innovations.accel_filt = eawp.measurements.accel_filt - accel_est;
-  eawp.innovations.V_pitot = eawp.state.V_body(0)-eawp.state.V_body(0); //eawp.measurements.V_pitot - eawp.state.V_body(0);
+  eawp.innovations.V_pitot = eawp.measurements.V_pitot - eawp.state.V_body(0);
 
   //std::cout << "State wind:\n" << eawp.state.wind << std::endl;
   //std::cout << "V_body:\n" << eawp.state.V_body << std::endl;
@@ -790,6 +800,9 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
   }
   else{
     G(3,0) = (ekf_aw_params.k_fx_drag[0] + 2*ekf_aw_params.k_fx_drag[1]*u*sign_u)/ekf_aw_params.vehicle_mass; // Simplified version (using u instead of V_a)
+
+    // Pusher contribution
+    G(3,0) += (ekf_aw_params.k_fx_push[2] + eawp.inputs.RPM_pusher*ekf_aw_params.k_fx_push[1])/ekf_aw_params.vehicle_mass; 
   }
     // Offset contribution
     G(3,0) += (2*eawp.state.offset[0]*sign_u*u)/ekf_aw_params.vehicle_mass;
@@ -871,10 +884,12 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
     }
     
     // State update using V_pitot (if available)
-    eawp.state.V_body  += K.block<3,1>(0,3) * eawp.innovations.V_pitot; 
-    eawp.state.wind    += K.block<3,1>(3,3) * eawp.innovations.V_pitot; 
-    if (ekf_aw_params.propagate_offset){
-      eawp.state.offset  += K.block<3,1>(6,3) * eawp.innovations.V_pitot;
+    if (ekf_aw_params.use_pitot){
+      eawp.state.V_body  += K.block<3,1>(0,3) * eawp.innovations.V_pitot; 
+      eawp.state.wind    += K.block<3,1>(3,3) * eawp.innovations.V_pitot; 
+      if (ekf_aw_params.propagate_offset){
+        eawp.state.offset  += K.block<3,1>(6,3) * eawp.innovations.V_pitot;
+      }
     }
     
     // Covariance update

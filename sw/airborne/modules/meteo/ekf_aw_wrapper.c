@@ -59,9 +59,9 @@ static void send_airspeed_wind_ekf(struct transport_tx *trans, struct link_devic
                               &ekf_aw.innov_acc_filt.y,
                               &ekf_aw.innov_acc_filt.z,
                               &ekf_aw.innov_V_pitot,
-                              &ekf_aw.Vg_NED.x,
-                              &ekf_aw.Vg_NED.y,
-                              &ekf_aw.Vg_NED.z);
+                              &ekf_aw.acc_filt.x,
+                              &ekf_aw.acc_filt.y,
+                              &ekf_aw.acc_filt.z);
                               
 }
 #if EKF_AW_WRAPPER_DEBUG
@@ -250,12 +250,11 @@ void ekf_aw_wrapper_periodic(void){
   // Sample time of EKF filter
   float sample_time = 1.0 / PERIODIC_FREQUENCY_AIRSPEED_EKF_FETCH;
 
-  set_in_air_status(autopilot_in_flight() & -stateGetPositionNed_f()->z>0.5)
+  set_in_air_status(autopilot_in_flight() & -stateGetPositionNed_f()->z>1.0);
 
   // Only propagate filter if in flight and altitude is higher than 0.5 m
   if (ekf_aw.in_air){
-    if (ekf_aw.internal_clock-ekf_aw.time_last_on_ground<PERIODIC_FREQUENCY_AIRSPEED_EKF*10){
-      //printf("Initiating quick convergence\n"); //TO DO: implement it so it turns on 10 s after takeoff
+    if (ekf_aw.internal_clock-ekf_aw.time_last_on_gnd<PERIODIC_FREQUENCY_AIRSPEED_EKF*10){
       ekf_params->quick_convergence = true;
     }
     else{
@@ -313,6 +312,12 @@ void ekf_aw_wrapper_fetch(void){
   int32_rmat_vmult(&body_accel_i, ned_to_body_rmat, &ned_accel_i);
   struct FloatVect3 body_accel_f;
   ACCELS_FLOAT_OF_BFP(body_accel_f, body_accel_i);
+
+  // If body accel available, can use this
+  //struct Int32Vect3 *body_accel_i;
+  //body_accel_i = stateGetAccelBody_i();
+  //ACCELS_FLOAT_OF_BFP(body_accel_f, *body_accel_i);
+  
 
   // Body accel
   update_butterworth_2_low_pass(&filt_acc[0], body_accel_f.x);
@@ -382,7 +387,7 @@ static void rpm_cb(uint8_t sender_id __attribute__((unused)), struct rpm_act_t *
 	void set_in_air_status(bool in_air)
 	{
 		if (!in_air) {
-			ekf_aw.time_last_on_ground = ekf_aw.internal_clock;
+			ekf_aw.time_last_on_gnd = ekf_aw.internal_clock;
 
 		} else {
 			ekf_aw.time_last_in_air = ekf_aw.internal_clock;

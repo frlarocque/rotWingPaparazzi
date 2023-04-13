@@ -46,6 +46,7 @@ struct ekfAwParameters {
 
   // Other options
   bool use_model[3];
+  bool use_pitot;
   bool propagate_offset;
   bool quick_convergence;
 };
