@@ -4,16 +4,15 @@
 #include "std.h"
 #include <math.h>
 
+#include "mcu_periph/sys_time.h"
+
 #ifndef SITL
 // Redifine Eigen assert so it doesn't use memory allocation
 #define eigen_assert(_cond) { if (!(_cond)) { while(1) ; } }
 #endif
 
 // Eigen headers
-#pragma GCC diagnostic ignored "-Wint-in-bool-context"
-#pragma GCC diagnostic ignored "-Wshadow"
 #include <Eigen/Dense>
-#pragma GCC diagnostic pop
 
 using namespace Eigen;
 
@@ -466,6 +465,9 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
   z = [V_x V_y V_z a_x a_y a_z];
   */
   
+  // Debug
+  uint32_t tic = get_sys_time_usec();
+
   // Exit filter if the filter crashed more than 500 times (50 Hz*5s)
   if (eawp.health.crashes_n > floor(5/dt)){
     eawp.health.healthy = false;
@@ -720,6 +722,9 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
     a_z = eawp.measurements.accel_filt(2);
   }
 
+  // Debug
+  uint32_t duration_1 = get_sys_time_usec()-tic;
+
   Vector3f accel_est = {a_x, a_y, a_z};
 
   // Innovation
@@ -858,8 +863,14 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
   // Innovation S Matrix Calculation
   Matrix<float, EKF_AW_R_SIZE, EKF_AW_R_SIZE> S = G * eawp.P * Gt + eawp.R; // M = identity
   
+  // Debug
+  uint32_t duration_2 = get_sys_time_usec()-tic;
+  
   // Kalman Gain Calculation
   Matrix<float, EKF_AW_COV_SIZE, EKF_AW_R_SIZE> K = eawp.P * Gt * S.inverse(); // TO DO: do we really need to compute the inverse? Any alternative that are less computationnaly heavy?
+
+  // Debug
+  uint32_t duration_3 = get_sys_time_usec()-tic;
 
   // Check if Kalman Gain contains any nan. Only update state if it is not NAN
   if (K.array().isNaN().any()){
@@ -894,6 +905,10 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
     
     // Covariance update
     eawp.P = (EKF_Aw_Cov::Identity() - K * G) * eawp.P;
+
+    eawp.state.offset(0) = duration_1*1.0f;
+    eawp.state.offset(1) = duration_2*1.0f;
+    eawp.state.offset(2) = duration_3*1.0f;
   }
 
   //std::cout << "subs:\n" << EKF_Aw_Cov::Identity() - K * G  << std::endl;

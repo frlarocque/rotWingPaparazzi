@@ -209,17 +209,48 @@ void ekf_aw_wrapper_init(void){
   ekf_aw.internal_clock=0;
   ekf_aw.time_last_on_gnd=0;
 
+  ekf_aw.start = false;
 };
 
 void ekf_aw_wrapper_periodic(void){
+  uint32_t tic = get_sys_time_usec();
   //printf("Running periodic Airspeed EKF Module\n");
   //printf("Airspeed is: %2.2f\n",filt_groundspeed[0].o[0]);
 
+  // Random acc inputs to filter
+  ekf_aw.acc.x = 1.0f*rand()/RAND_MAX; // TO BE REMOVED
+  ekf_aw.acc.y = 1.0f*rand()/RAND_MAX; // TO BE REMOVED
+  ekf_aw.acc.z = 1.0f*rand()/RAND_MAX; // TO BE REMOVED
+  ekf_aw.gyro.p = 0.1f*rand()/RAND_MAX; // TO BE REMOVED
+  ekf_aw.gyro.q = 0.1f*rand()/RAND_MAX; // TO BE REMOVED
+  ekf_aw.gyro.r = 0.1f*rand()/RAND_MAX; // TO BE REMOVED
+  ekf_aw.euler.phi = 1.0f*rand()/RAND_MAX; // TO BE REMOVED
+  ekf_aw.euler.theta = 1.0f*rand()/RAND_MAX; // TO BE REMOVED
+  ekf_aw.euler.psi = 1.0f*rand()/RAND_MAX; // TO BE REMOVED
+  ekf_aw.RPM_hover[0] = 1000.0f*rand()/RAND_MAX; // TO BE REMOVED
+  ekf_aw.RPM_hover[1] = 1000.0f*rand()/RAND_MAX; // TO BE REMOVED
+  ekf_aw.RPM_hover[2] = 1000.0f*rand()/RAND_MAX; // TO BE REMOVED
+  ekf_aw.RPM_hover[3] = 1000.0f*rand()/RAND_MAX; // TO BE REMOVED
+  ekf_aw.RPM_pusher = 1000.0f*rand()/RAND_MAX; // TO BE REMOVED
+  ekf_aw.skew = 10.0f*rand()/RAND_MAX; // TO BE REMOVED
+  ekf_aw.elevator_angle = 10.0f*rand()/RAND_MAX; // TO BE REMOVED
+
+  ekf_aw.Vg_NED.x = 10.0f*rand()/RAND_MAX; // TO BE REMOVED
+  ekf_aw.Vg_NED.y = 10.0f*rand()/RAND_MAX; // TO BE REMOVED
+  ekf_aw.Vg_NED.z = 10.0f*rand()/RAND_MAX; // TO BE REMOVED
+
+  ekf_aw.acc_filt.x = 1.0f*rand()/RAND_MAX; // TO BE REMOVED
+  ekf_aw.acc_filt.y = 1.0f*rand()/RAND_MAX; // TO BE REMOVED
+  ekf_aw.acc_filt.z = 1.0f*rand()/RAND_MAX; // TO BE REMOVED
+
+  ekf_aw.V_pitot = 10.0f*rand()/RAND_MAX; // TO BE REMOVED
+
+  /*
   // Get latest filtered values to ekf struct
   ekf_aw.acc.x = filt_acc[0].o[0];
   ekf_aw.acc.y = filt_acc[1].o[0];
   ekf_aw.acc.z = filt_acc[2].o[0];
-
+  
   ekf_aw.gyro.p = filt_rate[0].o[0];
   ekf_aw.gyro.q = filt_rate[1].o[0];
   ekf_aw.gyro.r = filt_rate[2].o[0];
@@ -246,6 +277,7 @@ void ekf_aw_wrapper_periodic(void){
   ekf_aw.acc_filt.z = filt_acc_low[2].o[0];
 
   ekf_aw.V_pitot = filt_airspeed_pitot.o[0];
+  */
 
   // Sample time of EKF filter
   float sample_time = 1.0 / PERIODIC_FREQUENCY_AIRSPEED_EKF_FETCH;
@@ -253,7 +285,7 @@ void ekf_aw_wrapper_periodic(void){
   set_in_air_status(autopilot_in_flight() & (-stateGetPositionNed_f()->z>1.0));
 
   // Only propagate filter if in flight and altitude is higher than 0.5 m
-  if (ekf_aw.in_air){
+  if (ekf_aw.start){ // TO BE REMOVED
     if (ekf_aw.internal_clock-ekf_aw.time_last_on_gnd<PERIODIC_FREQUENCY_AIRSPEED_EKF*10){
       ekf_params->quick_convergence = true;
     }
@@ -293,10 +325,14 @@ void ekf_aw_wrapper_periodic(void){
   
 
   ekf_aw.internal_clock++;
+
+  ekf_aw.wind.x = get_sys_time_usec()-tic;
 };
 
 // Function to get information from different modules and set it in the different filters
 void ekf_aw_wrapper_fetch(void){
+
+  uint32_t tic_2 = get_sys_time_usec();
 
   // NED Speed
   update_butterworth_2_low_pass(&filt_groundspeed[0], stateGetSpeedNed_f()->x);
@@ -355,6 +391,9 @@ void ekf_aw_wrapper_fetch(void){
   float de = (-0.004885417 * *elev_pprz + 36.6)*3.14f/180.0f;
   update_butterworth_2_low_pass(&filt_elevator_pprz, de);
   update_butterworth_2_low_pass(&filt_airspeed_pitot, stateGetAirspeed_f());
+
+
+  ekf_aw.wind.y = get_sys_time_usec()-tic_2;
 };
 
 // ABI callback that obtains the RPM from a module

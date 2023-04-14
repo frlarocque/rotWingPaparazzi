@@ -60,6 +60,7 @@ struct ekfAw {
   uint64_t internal_clock;
   uint64_t time_last_on_gnd;
   uint64_t time_last_in_air;
+  bool start;
 
 };
 
