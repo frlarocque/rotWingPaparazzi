@@ -128,9 +128,12 @@
   <makefile target="ap|nps">
     <file name="ekf_aw.cpp"/>
     <file name="ekf_aw_wrapper.c"/>
+    <!--If using eigen
     <define name="EIGEN_NO_MALLOC"/>
     <define name="EIGEN_NO_AUTOMATIC_RESIZING"/>
     <include name="../ext/eigen"/>
+    -->
+    <include name="$(PAPARAZZI_SRC)/sw/ext/matrix/"/>
   </makefile>
   <makefile target="ap">
     <define name="EIGEN_NO_DEBUG"/>

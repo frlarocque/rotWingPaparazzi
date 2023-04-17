@@ -73,6 +73,10 @@
       <define name="EKF_AW_K1_FX_DRAG" value="0.f" description="Drag coefficient linear to u used if use model based is set to false"/>
       <define name="EKF_AW_K2_FX_DRAG" value="-12E-3f" description="Drag coefficient linear to u^2 used if use model based is set to false"/>
 
+      <define name="EKF_AW_K1_FX_PUSH" value="0.0f"/>
+      <define name="EKF_AW_K2_FX_PUSH" value="0.0f"/>
+      <define name="EKF_AW_K3_FX_PUSH" value="0.0f"/>
+
       <define name="EKF_AW_K_FY_BETA"  value="-8.5E-4f" description="Fy v (side velocity) coefficient"/>
       <define name="EKF_AW_K_FY_V"     value="-1.15E-2f" description="Fy beta coefficient"/>
 

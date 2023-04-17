@@ -11,6 +11,8 @@
 #include "autopilot.h"
 #include "modules/actuators/actuators.h"
 
+#include "mcu_periph/sys_time.h"
+
 #ifndef EKF_AW_WRAPPER_DEBUG
 #define EKF_AW_WRAPPER_DEBUG   false
 #endif
@@ -68,6 +70,7 @@ static void send_airspeed_wind_ekf(struct transport_tx *trans, struct link_devic
   // Telemetry Message function
   static void send_airspeed_wind_ekf_cov(struct transport_tx *trans, struct link_device *dev)
   {
+    //&(DefaultChannel).trans_tx, &(DefaultDevice).device
     pprz_msg_send_AIRSPEED_WIND_ESTIMATOR_EKF_COV(trans, dev, AC_ID,
                                 &ekf_aw.process_cov[0],
                                 &ekf_aw.process_cov[3],
@@ -217,6 +220,7 @@ void ekf_aw_wrapper_periodic(void){
   //printf("Running periodic Airspeed EKF Module\n");
   //printf("Airspeed is: %2.2f\n",filt_groundspeed[0].o[0]);
 
+  /*
   // Random acc inputs to filter
   ekf_aw.acc.x = 1.0f*rand()/RAND_MAX; // TO BE REMOVED
   ekf_aw.acc.y = 1.0f*rand()/RAND_MAX; // TO BE REMOVED
@@ -244,8 +248,7 @@ void ekf_aw_wrapper_periodic(void){
   ekf_aw.acc_filt.z = 1.0f*rand()/RAND_MAX; // TO BE REMOVED
 
   ekf_aw.V_pitot = 10.0f*rand()/RAND_MAX; // TO BE REMOVED
-
-  /*
+  */
   // Get latest filtered values to ekf struct
   ekf_aw.acc.x = filt_acc[0].o[0];
   ekf_aw.acc.y = filt_acc[1].o[0];
@@ -277,7 +280,7 @@ void ekf_aw_wrapper_periodic(void){
   ekf_aw.acc_filt.z = filt_acc_low[2].o[0];
 
   ekf_aw.V_pitot = filt_airspeed_pitot.o[0];
-  */
+  
 
   // Sample time of EKF filter
   float sample_time = 1.0 / PERIODIC_FREQUENCY_AIRSPEED_EKF_FETCH;
@@ -326,7 +329,7 @@ void ekf_aw_wrapper_periodic(void){
 
   ekf_aw.internal_clock++;
 
-  ekf_aw.wind.x = get_sys_time_usec()-tic;
+  //ekf_aw.wind.x = get_sys_time_usec()-tic;
 };
 
 // Function to get information from different modules and set it in the different filters
@@ -339,7 +342,7 @@ void ekf_aw_wrapper_fetch(void){
   update_butterworth_2_low_pass(&filt_groundspeed[1], stateGetSpeedNed_f()->y);
   update_butterworth_2_low_pass(&filt_groundspeed[2], stateGetSpeedNed_f()->z);
 
-  /*
+
   // Transferring from NED to Body as body is not available right now
   struct NedCoor_i *accel_tmp = stateGetAccelNed_i();
   struct Int32Vect3 ned_accel_i,body_accel_i;
@@ -349,14 +352,14 @@ void ekf_aw_wrapper_fetch(void){
   int32_rmat_vmult(&body_accel_i, ned_to_body_rmat, &ned_accel_i);
   struct FloatVect3 body_accel_f;
   ACCELS_FLOAT_OF_BFP(body_accel_f, body_accel_i);
-  */
-
+  
+  /*
   // If body accel available, can use this
   struct FloatVect3 body_accel_f;
   struct Int32Vect3 *body_accel_i;
   body_accel_i = stateGetAccelBody_i();
   ACCELS_FLOAT_OF_BFP(body_accel_f, *body_accel_i);
-  
+  */
 
   // Body accel
   update_butterworth_2_low_pass(&filt_acc[0], body_accel_f.x);
@@ -383,7 +386,9 @@ void ekf_aw_wrapper_fetch(void){
   }
   update_butterworth_2_low_pass(&filt_pusher_prop_rpm, ekf_aw.last_RPM_pusher*1.0f);
 
-  update_butterworth_2_low_pass(&filt_skew, wing_rotation.wing_angle_rad);
+  // FOR DEBUG
+  update_butterworth_2_low_pass(&filt_skew, 0.0f);
+  //update_butterworth_2_low_pass(&filt_skew, wing_rotation.wing_angle_rad);
 
   // Get elevator pprz signal
   int16_t *elev_pprz = &actuators_pprz[5];
@@ -392,8 +397,8 @@ void ekf_aw_wrapper_fetch(void){
   update_butterworth_2_low_pass(&filt_elevator_pprz, de);
   update_butterworth_2_low_pass(&filt_airspeed_pitot, stateGetAirspeed_f());
 
-
-  ekf_aw.wind.y = get_sys_time_usec()-tic_2;
+  // FOR DEBUG
+  //ekf_aw.wind.y = get_sys_time_usec()-tic_2;
 };
 
 // ABI callback that obtains the RPM from a module
