@@ -59,9 +59,9 @@ static void send_airspeed_wind_ekf(struct transport_tx *trans, struct link_devic
                               &ekf_aw.innov_acc_filt.y,
                               &ekf_aw.innov_acc_filt.z,
                               &ekf_aw.innov_V_pitot,
-                              &ekf_aw.acc_filt.x,
-                              &ekf_aw.acc_filt.y,
-                              &ekf_aw.acc_filt.z);
+                              &ekf_aw.last_RPM_pusher,
+                              &ekf_aw.last_RPM_hover[0],
+                              &ekf_aw.last_RPM_hover[1]);
                               
 }
 #if EKF_AW_WRAPPER_DEBUG
