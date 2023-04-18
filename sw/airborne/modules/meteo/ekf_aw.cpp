@@ -294,6 +294,28 @@ struct ekfAwPrivate {
 #define EKF_AW_AOA_MIN_ANGLE -15.0f
 #endif
 
+// FOR DEBUG
+#ifndef EKF_AW_TELEMERY_DEBUG
+#define EKF_AW_TELEMERY_DEBUG false
+#endif
+
+/*
+// TIMING INFO (for future optimization)
+Part of code                | Time to run (micro sec)
+------------------------------------------------------
+Var declaration             | 2
+Trig fn                     | 3
+Aoa, Beta                   | 5
+F+L declaration             | 2
+P = F*P*F^T+L*Q*L^T         | 3
+Accel calc                  | 1
+G                           | 2
+S calculation G*P*G^T+R     | 28
+Kalman gain calc P*G^T*S^-1 | 48
+State update                | 7
+Cov Update P=(I-K*G)*P      | 36
+*/
+
 // Parameters
 struct ekfAwParameters ekf_aw_params;
 
@@ -470,12 +492,15 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
   z = [V_x V_y V_z a_x a_y a_z];
   */
   
+  // FOR DEBUG
   float status = 0.0f;
   float zero = 0.0f;
 
+  if (EKF_AW_TELEMERY_DEBUG){
   // FOR DEBUG
   status = 1.0f;
   pprz_msg_send_AIRSPEED_WIND_ESTIMATOR_EKF_COV(&(DefaultChannel).trans_tx, &(DefaultDevice).device, AC_ID,&status,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero);
+  }
 
   // Debug
   uint32_t tic = get_sys_time_usec();
@@ -495,18 +520,22 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
   eawp.inputs.rates(0) = gyro->p;    eawp.inputs.rates(1) = gyro->q;      eawp.inputs.rates(2) = gyro->r;
   eawp.inputs.euler(0) = euler->phi; eawp.inputs.euler(1) = euler->theta; eawp.inputs.euler(2) = euler->psi;
   
+  if (EKF_AW_TELEMERY_DEBUG){
   // FOR DEBUG
   status = 2.0f;
   pprz_msg_send_AIRSPEED_WIND_ESTIMATOR_EKF_COV(&(DefaultChannel).trans_tx, &(DefaultDevice).device, AC_ID,&status,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero);
+  }
 
   eawp.inputs.RPM_pusher = *pusher_RPM;
   
   eawp.inputs.RPM_hover(0) = hover_RPM_array[0]; eawp.inputs.RPM_hover(1) = hover_RPM_array[1]; eawp.inputs.RPM_hover(2) = hover_RPM_array[2]; eawp.inputs.RPM_hover(3) = hover_RPM_array[3];
   //std::cout << "Hover prop:\n" << eawp.inputs.RPM_hover << std::endl;
 
+  if (EKF_AW_TELEMERY_DEBUG){
   // FOR DEBUG
   status = 3.0f;
   pprz_msg_send_AIRSPEED_WIND_ESTIMATOR_EKF_COV(&(DefaultChannel).trans_tx, &(DefaultDevice).device, AC_ID,&status,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero);
+  }
 
   eawp.inputs.skew = *skew;
   eawp.inputs.skew = eawp.inputs.skew < 0 ? 0 : eawp.inputs.skew > deg2rad*90 ? deg2rad*90 : eawp.inputs.skew; // Saturate 0-90 deg
@@ -519,9 +548,11 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
   eawp.measurements.accel_filt(0) = acc_filt->x; eawp.measurements.accel_filt(1) = acc_filt->y; eawp.measurements.accel_filt(2) = acc_filt->z;
   eawp.measurements.V_pitot = *V_pitot;
   
+  if (EKF_AW_TELEMERY_DEBUG){
   // FOR DEBUG
   status = 4.0f;
   pprz_msg_send_AIRSPEED_WIND_ESTIMATOR_EKF_COV(&(DefaultChannel).trans_tx, &(DefaultDevice).device, AC_ID,&status,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero);
+  }
 
   // Variables used in matrices and precomputed values
   float V_a = eawp.state.V_body.norm(); //airspeed
@@ -539,6 +570,9 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
   float theta = eawp.inputs.euler(1);
   float psi = eawp.inputs.euler(2);
 
+  // Debug
+  uint32_t duration_1 = get_sys_time_usec()-tic;
+
   float cos_phi = cosf(phi);
   float sin_phi = sinf(phi);
   float cos_theta = cosf(theta);
@@ -548,6 +582,9 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
 
   float cos_skew = cosf(eawp.inputs.skew);
   float sin_skew = sinf(eawp.inputs.skew);
+
+  // Debug
+  uint32_t duration_2 = get_sys_time_usec()-tic;
 
   // DCM from Euler Angles
   matrix::Matrix3f dcm;
@@ -587,10 +624,13 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
   // Verify vehicle mass is not 0
   ekf_aw_params.vehicle_mass = ekf_aw_params.vehicle_mass == 0 ? 1E-1 : ekf_aw_params.vehicle_mass;
 
+  if (EKF_AW_TELEMERY_DEBUG){
   // FOR DEBUG
   status = 5.0f;
   pprz_msg_send_AIRSPEED_WIND_ESTIMATOR_EKF_COV(&(DefaultChannel).trans_tx, &(DefaultDevice).device, AC_ID,&status,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero);
-
+  }
+  // Debug
+  uint32_t duration_3 = get_sys_time_usec()-tic;
 
   /////////////////////////////////
   //    Special Conditions       //
@@ -620,9 +660,11 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
     eawp.R(EKF_AW_R_a_y_filt_index,EKF_AW_R_a_y_filt_index) = ekf_aw_params.R_accel_filt[0];
   }
 
+  if (EKF_AW_TELEMERY_DEBUG){
   // FOR DEBUG
   status = 6.0f;
   pprz_msg_send_AIRSPEED_WIND_ESTIMATOR_EKF_COV(&(DefaultChannel).trans_tx, &(DefaultDevice).device, AC_ID,&status,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero);
+  }
 
   /////////////////////////////////
   //      Propagate States       //
@@ -649,9 +691,11 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
   }
 
 
+  if (EKF_AW_TELEMERY_DEBUG){
   // FOR DEBUG
   status = 7.0f;
   pprz_msg_send_AIRSPEED_WIND_ESTIMATOR_EKF_COV(&(DefaultChannel).trans_tx, &(DefaultDevice).device, AC_ID,&status,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero);
+  }
 
   /////////////////////////////////
   //    Propagate Covariance     //
@@ -676,10 +720,11 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
   F(2,0) = q;
   F(2,1) = -p;
 
+  if (EKF_AW_TELEMERY_DEBUG){
   // FOR DEBUG
   status = 8.0f;
   pprz_msg_send_AIRSPEED_WIND_ESTIMATOR_EKF_COV(&(DefaultChannel).trans_tx, &(DefaultDevice).device, AC_ID,&status,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero);
-
+  }
 
    // L Matrix
   /* 
@@ -709,12 +754,39 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
   L(7,10) =1;
   L(8,11) =1;
 
-  // Covariance prediction
-  eawp.P = F * eawp.P * F.transpose() + L * eawp.Q * L.transpose();
+  // Debug
+  uint32_t duration_4 = get_sys_time_usec()-tic;
 
+  // Covariance prediction
+  // eawp.P = F * eawp.P * F.transpose() + L * eawp.Q * L.transpose();
+  // This is an optimized version, as L and F are sparse matrix
+  // Goes from approx 4000 operation to 120 operations
+  /*
+  eawp.P.setZero();
+  eawp.P(0,0) = eawp.Q(0, 0) + q * (q * eawp.P(2, 2) - r * eawp.P(1, 2)) - r * (q * eawp.P(2, 1) - r * eawp.P(1, 1)) + v*v * eawp.Q(5, 5) + w*w * eawp.Q(4, 4);
+  eawp.P(0,1) = r * (q * eawp.P(2, 0) - r * eawp.P(1, 0)) - p * (q * eawp.P(2, 2) - r * eawp.P(1, 2)) - u * v*eawp.Q(5, 5);
+  eawp.P(0,2) = p * (q * eawp.P(2, 1) - r * eawp.P(1, 1)) - q * (q * eawp.P(2, 0) - r * eawp.P(1, 0)) - u * w*eawp.Q(4, 4);
+  eawp.P(1,0) = r * (p * eawp.P(2, 1) - r * eawp.P(0, 1)) - q * (p * eawp.P(2, 2) - r * eawp.P(0, 2)) - u * v*eawp.Q(5, 5);
+  eawp.P(1,1) = eawp.Q(1, 1) + p * (p * eawp.P(2, 2) - r * eawp.P(0, 2)) - r * (p * eawp.P(2, 0) - r * eawp.P(0, 0)) + u*u * eawp.Q(5, 5) + w*w * eawp.Q(3, 3);
+  eawp.P(1,2) = q * (p * eawp.P(2, 0) - r * eawp.P(0, 0)) - p * (p * eawp.P(2, 1) - r * eawp.P(0, 1)) - v * w*eawp.Q(3, 3);
+  eawp.P(2,0) = q * (p * eawp.P(1, 2) - q * eawp.P(0, 2)) - r * (p * eawp.P(1, 1) - q * eawp.P(0, 1)) - u * w*eawp.Q(4, 4);
+  eawp.P(2,1) = r * (p * eawp.P(1, 0) - q * eawp.P(0, 0)) - p * (p * eawp.P(1, 2) - q * eawp.P(0, 2)) - v * w*eawp.Q(3, 3);
+  eawp.P(2,2) = eawp.Q(2, 2) + p * (p * eawp.P(1, 1) - q * eawp.P(0, 1)) - q * (p * eawp.P(1, 0) - q * eawp.P(0, 0)) + u*u * eawp.Q(4, 4) + v*v * eawp.Q(3, 3);
+  eawp.P(3,3) = eawp.Q(6, 6);
+  eawp.P(4,4) = eawp.Q(7, 7);
+  eawp.P(5,5) = eawp.Q(8, 8);
+  eawp.P(6,6) = eawp.Q(9, 9);
+  eawp.P(7,7) = eawp.Q(10, 10);
+  eawp.P(8,8) = eawp.Q(11, 11);
+  */
+  eawp.P = F * eawp.P * F.transpose() + L * eawp.Q * L.transpose();
+  // Debug
+  uint32_t duration_5 = get_sys_time_usec()-tic;
+  if (EKF_AW_TELEMERY_DEBUG){
   // FOR DEBUG
   status = 9.0f;
   pprz_msg_send_AIRSPEED_WIND_ESTIMATOR_EKF_COV(&(DefaultChannel).trans_tx, &(DefaultDevice).device, AC_ID,&status,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero);
+  }
 
   ///////////////////////////////////////////
   //  Measurement estimation from state    //
@@ -752,9 +824,11 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
     a_x += eawp.forces.pusher(0)/ekf_aw_params.vehicle_mass;
   }
 
+  if (EKF_AW_TELEMERY_DEBUG){
   // FOR DEBUG
   status = 10.0f;
   pprz_msg_send_AIRSPEED_WIND_ESTIMATOR_EKF_COV(&(DefaultChannel).trans_tx, &(DefaultDevice).device, AC_ID,&status,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero);
+  }
 
   // A_y
   if (EKF_AW_USE_BETA){
@@ -765,10 +839,11 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
     a_y = sign_v*v*v*ekf_aw_params.k_fy_v/ekf_aw_params.vehicle_mass + eawp.state.offset(1);
   }
   
+  if (EKF_AW_TELEMERY_DEBUG){
   // FOR DEBUG
   status = 11.0f;
   pprz_msg_send_AIRSPEED_WIND_ESTIMATOR_EKF_COV(&(DefaultChannel).trans_tx, &(DefaultDevice).device, AC_ID,&status,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero);
-
+  }
 
   // A_z
   if (ekf_aw_params.use_model[2]){
@@ -788,13 +863,12 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
     a_z = eawp.measurements.accel_filt(2);
   }
 
+  if (EKF_AW_TELEMERY_DEBUG){
   // FOR DEBUG
   status = 12.0f;
   pprz_msg_send_AIRSPEED_WIND_ESTIMATOR_EKF_COV(&(DefaultChannel).trans_tx, &(DefaultDevice).device, AC_ID,&status,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero);
-
-
-  // Debug
-  uint32_t duration_1 = get_sys_time_usec()-tic;
+  }
+  
 
   matrix::Vector3f accel_est = {a_x, a_y, a_z};
 
@@ -811,6 +885,9 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
   //std::cout << "Innov V_gnd:\n" << eawp.innovations.V_gnd << std::endl;
   //std::cout << "Innov accel_filt:\n" << eawp.innovations.accel_filt << std::endl;
   //std::cout << "Euler:\n" << eawp.inputs.euler << std::endl;
+
+  // Debug
+  uint32_t duration_6 = get_sys_time_usec()-tic;
 
   /////////////////////////////////
   //         State Update        //
@@ -842,10 +919,11 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
   G(2,2) = cos_phi*cos_theta;
   G(2,5) = 1;
   
+  if (EKF_AW_TELEMERY_DEBUG){
   // FOR DEBUG
   status = 13.0f;
   pprz_msg_send_AIRSPEED_WIND_ESTIMATOR_EKF_COV(&(DefaultChannel).trans_tx, &(DefaultDevice).device, AC_ID,&status,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero);
-
+  }
 
   // A_x_filt related lines
   if (ekf_aw_params.use_model[0]){ 
@@ -889,10 +967,11 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
     G(3,0) += (2*eawp.state.offset(0)*sign_u*u)/ekf_aw_params.vehicle_mass;
     G(3,6) = (u*u*sign_u)/ekf_aw_params.vehicle_mass;
 
+  if (EKF_AW_TELEMERY_DEBUG){
   // FOR DEBUG
   status = 14.0f;
   pprz_msg_send_AIRSPEED_WIND_ESTIMATOR_EKF_COV(&(DefaultChannel).trans_tx, &(DefaultDevice).device, AC_ID,&status,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero);
-
+  }
 
   // A_y_filt related lines
   if (EKF_AW_USE_BETA){
@@ -907,10 +986,11 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
   }
   G(4,7) = 1;
 
+  if (EKF_AW_TELEMERY_DEBUG){
   // FOR DEBUG
   status = 15.0f;
   pprz_msg_send_AIRSPEED_WIND_ESTIMATOR_EKF_COV(&(DefaultChannel).trans_tx, &(DefaultDevice).device, AC_ID,&status,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero);
-
+  }
 
   // A_z_filt related lines
   if (ekf_aw_params.use_model[2]){ 
@@ -943,36 +1023,36 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
   // V_pitot related lines 
   G(6,0) = 1;
 
+  if (EKF_AW_TELEMERY_DEBUG){
   // FOR DEBUG
   status = 16.0f;
   pprz_msg_send_AIRSPEED_WIND_ESTIMATOR_EKF_COV(&(DefaultChannel).trans_tx, &(DefaultDevice).device, AC_ID,&status,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero);
-
+  }
+  // Debug
+  uint32_t duration_7 = get_sys_time_usec()-tic;
 
   // Innovation S Matrix Calculation
   matrix::SquareMatrix<float, EKF_AW_R_SIZE> S = G * eawp.P * G.transpose() + eawp.R; // M = identity
 
+  // Debug
+  uint32_t duration_8 = get_sys_time_usec()-tic;
+  if (EKF_AW_TELEMERY_DEBUG){
   // FOR DEBUG
   status = 17.0f;
   pprz_msg_send_AIRSPEED_WIND_ESTIMATOR_EKF_COV(&(DefaultChannel).trans_tx, &(DefaultDevice).device, AC_ID,&status,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero);
-
-
-  // Debug
-  uint32_t duration_2 = get_sys_time_usec()-tic;
-  
-  // FOR DEBUG
-  status = 18.0f;
-  pprz_msg_send_AIRSPEED_WIND_ESTIMATOR_EKF_COV(&(DefaultChannel).trans_tx, &(DefaultDevice).device, AC_ID,&status,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero);
+  }
 
   // Kalman Gain Calculation
   matrix::Matrix<float, EKF_AW_COV_SIZE, EKF_AW_R_SIZE> K = eawp.P * G.transpose() * S.I(); // TO DO: do we really need to compute the inverse? Any alternative that are less computationnaly heavy?
 
-  // FOR DEBUG
-  status = 19.0f;
-  pprz_msg_send_AIRSPEED_WIND_ESTIMATOR_EKF_COV(&(DefaultChannel).trans_tx, &(DefaultDevice).device, AC_ID,&status,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero);
-
-
   // Debug
-  uint32_t duration_3 = get_sys_time_usec()-tic;
+  uint32_t duration_9 = get_sys_time_usec()-tic;
+
+  if (EKF_AW_TELEMERY_DEBUG){
+  // FOR DEBUG
+  status = 18.0f;
+  pprz_msg_send_AIRSPEED_WIND_ESTIMATOR_EKF_COV(&(DefaultChannel).trans_tx, &(DefaultDevice).device, AC_ID,&status,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero);
+  }
 
   // Check if Kalman Gain contains any nan. Only update state if it is not NAN
   anyNan = false;
@@ -1019,24 +1099,44 @@ void ekf_aw_propagate(struct FloatVect3 *acc,struct FloatRates *gyro, struct Flo
       }
     }
     
-    // FOR DEBUG
-  status =20.0f;
-  pprz_msg_send_AIRSPEED_WIND_ESTIMATOR_EKF_COV(&(DefaultChannel).trans_tx, &(DefaultDevice).device, AC_ID,&status,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero);
+    // Debug
+    uint32_t duration_10 = get_sys_time_usec()-tic;
 
+    if (EKF_AW_TELEMERY_DEBUG){
+    // FOR DEBUG
+    status = 19.0f;
+    pprz_msg_send_AIRSPEED_WIND_ESTIMATOR_EKF_COV(&(DefaultChannel).trans_tx, &(DefaultDevice).device, AC_ID,&status,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero);
+    }
 
     // Covariance update
     matrix::SquareMatrix<float,EKF_AW_COV_SIZE> eye;
     eye.setIdentity();
     eawp.P = (eye - K * G) * eawp.P;
 
-    eawp.state.offset(0) = duration_1*1.0f;
-    eawp.state.offset(1) = duration_2*1.0f;
-    eawp.state.offset(2) = duration_3*1.0f;
-
+    if (EKF_AW_TELEMERY_DEBUG){
     // FOR DEBUG
-    status = 21.0f;
+    status = 20.0f;
     pprz_msg_send_AIRSPEED_WIND_ESTIMATOR_EKF_COV(&(DefaultChannel).trans_tx, &(DefaultDevice).device, AC_ID,&status,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero,&zero);
+    }
 
+    // Debug
+    uint32_t duration_11 = get_sys_time_usec()-tic;
+
+    // DEBUG
+    eawp.forces.fuselage(0) = duration_1*1.0f;
+    eawp.forces.fuselage(1) = duration_2*1.0f;
+    eawp.forces.fuselage(2) = duration_3*1.0f;
+
+    eawp.forces.wing(0) = duration_4*1.0f;
+    eawp.forces.wing(1) = duration_5*1.0f;
+    eawp.forces.wing(2) = duration_6*1.0f;
+
+    eawp.forces.elevator(0) = duration_7*1.0f;
+    eawp.forces.elevator(1) = duration_8*1.0f;
+    eawp.forces.elevator(2) = duration_9*1.0f;
+
+    eawp.forces.hover(0) = duration_10*1.0f;
+    eawp.forces.hover(1) = duration_11*1.0f;
   }
 
   //std::cout << "subs:\n" << EKF_Aw_Cov::Identity() - K * G  << std::endl;

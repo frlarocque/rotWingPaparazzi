@@ -81,6 +81,8 @@
       <define name="EKF_AW_K_FY_V"     value="-1.15E-2f" description="Fy beta coefficient"/>
 
       <define name="EKF_AW_WRAPPER_DEBUG"     value="true" description="debug mode to send cov telemetry"/>
+      <define name="EKF_AW_WRAPPER_ROT_WING"     value="false" description="is the vehicle a rotating wing drone"/>
+      
     </module>
 
   </firmware>

@@ -11,19 +11,18 @@
 #include "autopilot.h"
 #include "modules/actuators/actuators.h"
 
-#include "mcu_periph/sys_time.h"
+#include "mcu_periph/sys_time.h" // FOR DEBUG
+
+#include "modules/rot_wing_drone/wing_rotation_controller_v3a.h"
 
 #ifndef EKF_AW_WRAPPER_DEBUG
-#define EKF_AW_WRAPPER_DEBUG   false
+#define EKF_AW_WRAPPER_DEBUG true
 #endif
-#ifndef EKF_AW_WRAPPER_ROT_WING_V3a
-#define EKF_AW_WRAPPER_ROT_WING_V3a true
+#ifndef EKF_AW_WRAPPER_ROT_WING
+#define EKF_AW_WRAPPER_ROT_WING true
 #endif
-
-#if EKF_AW_WRAPPER_ROTWING_V3a
-  #include "modules/rot_wing_drone/wing_rotation_controller_v3a.h"
-//#else
-//  #include "modules/rot_wing_drone/wing_rotation_controller_v3b.h"
+#ifndef EKF_AW_WRAPPER_RANDOM_INPUTS
+#define EKF_AW_WRAPPER_RANDOM_INPUTS false
 #endif
 
 #if PERIODIC_TELEMETRY
@@ -65,6 +64,8 @@ static void send_airspeed_wind_ekf(struct transport_tx *trans, struct link_devic
                               
 }
 #if EKF_AW_WRAPPER_DEBUG
+  // FOR DEBUG
+  /*
   // Telemetry Message function
   static void send_airspeed_wind_ekf_cov(struct transport_tx *trans, struct link_device *dev)
   {
@@ -92,7 +93,7 @@ static void send_airspeed_wind_ekf(struct transport_tx *trans, struct link_devic
                                 &ekf_aw.state_cov[8]);
                                 
   }
-
+  */
   // Telemetry Message function
   static void send_airspeed_wind_ekf_forces(struct transport_tx *trans, struct link_device *dev)
   {
@@ -192,7 +193,8 @@ void ekf_aw_wrapper_init(void){
   #if PERIODIC_TELEMETRY
     register_periodic_telemetry(DefaultPeriodic, PPRZ_MSG_ID_AIRSPEED_WIND_ESTIMATOR_EKF, send_airspeed_wind_ekf);
     #if (EKF_AW_WRAPPER_DEBUG)
-      register_periodic_telemetry(DefaultPeriodic, PPRZ_MSG_ID_AIRSPEED_WIND_ESTIMATOR_EKF_COV, send_airspeed_wind_ekf_cov);
+      // FOR DEBUG
+      //register_periodic_telemetry(DefaultPeriodic, PPRZ_MSG_ID_AIRSPEED_WIND_ESTIMATOR_EKF_COV, send_airspeed_wind_ekf_cov);
       register_periodic_telemetry(DefaultPeriodic, PPRZ_MSG_ID_AIRSPEED_WIND_ESTIMATOR_EKF_FORCES, send_airspeed_wind_ekf_forces);
     #endif
   #endif
@@ -210,6 +212,7 @@ void ekf_aw_wrapper_init(void){
   ekf_aw.internal_clock=0;
   ekf_aw.time_last_on_gnd=0;
 
+  // FOR DEBUG
   ekf_aw.start = false;
 };
 
@@ -218,69 +221,70 @@ void ekf_aw_wrapper_periodic(void){
   //printf("Running periodic Airspeed EKF Module\n");
   //printf("Airspeed is: %2.2f\n",filt_groundspeed[0].o[0]);
 
-  
-  // Random acc inputs to filter
-  ekf_aw.acc.x = 1.0f*rand()/RAND_MAX; // TO BE REMOVED
-  ekf_aw.acc.y = 1.0f*rand()/RAND_MAX; // TO BE REMOVED
-  ekf_aw.acc.z = 1.0f*rand()/RAND_MAX; // TO BE REMOVED
-  ekf_aw.gyro.p = 0.1f*rand()/RAND_MAX; // TO BE REMOVED
-  ekf_aw.gyro.q = 0.1f*rand()/RAND_MAX; // TO BE REMOVED
-  ekf_aw.gyro.r = 0.1f*rand()/RAND_MAX; // TO BE REMOVED
-  ekf_aw.euler.phi = 1.0f*rand()/RAND_MAX; // TO BE REMOVED
-  ekf_aw.euler.theta = 1.0f*rand()/RAND_MAX; // TO BE REMOVED
-  ekf_aw.euler.psi = 1.0f*rand()/RAND_MAX; // TO BE REMOVED
-  ekf_aw.RPM_hover[0] = 1000.0f*rand()/RAND_MAX; // TO BE REMOVED
-  ekf_aw.RPM_hover[1] = 1000.0f*rand()/RAND_MAX; // TO BE REMOVED
-  ekf_aw.RPM_hover[2] = 1000.0f*rand()/RAND_MAX; // TO BE REMOVED
-  ekf_aw.RPM_hover[3] = 1000.0f*rand()/RAND_MAX; // TO BE REMOVED
-  ekf_aw.RPM_pusher = 1000.0f*rand()/RAND_MAX; // TO BE REMOVED
-  ekf_aw.skew = 10.0f*rand()/RAND_MAX; // TO BE REMOVED
-  ekf_aw.elevator_angle = 10.0f*rand()/RAND_MAX; // TO BE REMOVED
-
-  ekf_aw.Vg_NED.x = 10.0f*rand()/RAND_MAX; // TO BE REMOVED
-  ekf_aw.Vg_NED.y = 10.0f*rand()/RAND_MAX; // TO BE REMOVED
-  ekf_aw.Vg_NED.z = 10.0f*rand()/RAND_MAX; // TO BE REMOVED
-
-  ekf_aw.acc_filt.x = 1.0f*rand()/RAND_MAX; // TO BE REMOVED
-  ekf_aw.acc_filt.y = 1.0f*rand()/RAND_MAX; // TO BE REMOVED
-  ekf_aw.acc_filt.z = 1.0f*rand()/RAND_MAX; // TO BE REMOVED
-
-  ekf_aw.V_pitot = 10.0f*rand()/RAND_MAX; // TO BE REMOVED
-  
-
- /*
   // Get latest filtered values to ekf struct
-  ekf_aw.acc.x = filt_acc[0].o[0];
-  ekf_aw.acc.y = filt_acc[1].o[0];
-  ekf_aw.acc.z = filt_acc[2].o[0];
-  
-  ekf_aw.gyro.p = filt_rate[0].o[0];
-  ekf_aw.gyro.q = filt_rate[1].o[0];
-  ekf_aw.gyro.r = filt_rate[2].o[0];
+  if(EKF_AW_WRAPPER_RANDOM_INPUTS){
+    // FOR DEBUG
+    // Random acc inputs to filter
+    ekf_aw.acc.x = 1.0f*rand()/RAND_MAX; // TO BE REMOVED
+    ekf_aw.acc.y = 1.0f*rand()/RAND_MAX; // TO BE REMOVED
+    ekf_aw.acc.z = 1.0f*rand()/RAND_MAX; // TO BE REMOVED
+    ekf_aw.gyro.p = 0.1f*rand()/RAND_MAX; // TO BE REMOVED
+    ekf_aw.gyro.q = 0.1f*rand()/RAND_MAX; // TO BE REMOVED
+    ekf_aw.gyro.r = 0.1f*rand()/RAND_MAX; // TO BE REMOVED
+    ekf_aw.euler.phi = 1.0f*rand()/RAND_MAX; // TO BE REMOVED
+    ekf_aw.euler.theta = 1.0f*rand()/RAND_MAX; // TO BE REMOVED
+    ekf_aw.euler.psi = 1.0f*rand()/RAND_MAX; // TO BE REMOVED
+    ekf_aw.RPM_hover[0] = 1000.0f*rand()/RAND_MAX; // TO BE REMOVED
+    ekf_aw.RPM_hover[1] = 1000.0f*rand()/RAND_MAX; // TO BE REMOVED
+    ekf_aw.RPM_hover[2] = 1000.0f*rand()/RAND_MAX; // TO BE REMOVED
+    ekf_aw.RPM_hover[3] = 1000.0f*rand()/RAND_MAX; // TO BE REMOVED
+    ekf_aw.RPM_pusher = 1000.0f*rand()/RAND_MAX; // TO BE REMOVED
+    ekf_aw.skew = 10.0f*rand()/RAND_MAX; // TO BE REMOVED
+    ekf_aw.elevator_angle = 10.0f*rand()/RAND_MAX; // TO BE REMOVED
 
-  ekf_aw.euler.phi = filt_euler[0].o[0];
-  ekf_aw.euler.theta = filt_euler[1].o[0];
-  //ekf_aw.euler.psi = filt_euler[2].o[0];
-  ekf_aw.euler.psi = stateGetNedToBodyEulers_f()->psi; // TO DO: implement circular wrap filter for psi angle
+    ekf_aw.Vg_NED.x = 10.0f*rand()/RAND_MAX; // TO BE REMOVED
+    ekf_aw.Vg_NED.y = 10.0f*rand()/RAND_MAX; // TO BE REMOVED
+    ekf_aw.Vg_NED.z = 10.0f*rand()/RAND_MAX; // TO BE REMOVED
 
-  for(int8_t i=0; i<4; i++) {
-  ekf_aw.RPM_hover[i] = filt_hover_prop_rpm[i].o[0];
+    ekf_aw.acc_filt.x = 1.0f*rand()/RAND_MAX; // TO BE REMOVED
+    ekf_aw.acc_filt.y = 1.0f*rand()/RAND_MAX; // TO BE REMOVED
+    ekf_aw.acc_filt.z = 1.0f*rand()/RAND_MAX; // TO BE REMOVED
+
+    ekf_aw.V_pitot = 10.0f*rand()/RAND_MAX; // TO BE REMOVED
   }
+  else{
+    // Get latest filtered values to ekf struct
+    ekf_aw.acc.x = filt_acc[0].o[0];
+    ekf_aw.acc.y = filt_acc[1].o[0];
+    ekf_aw.acc.z = filt_acc[2].o[0];
+    
+    ekf_aw.gyro.p = filt_rate[0].o[0];
+    ekf_aw.gyro.q = filt_rate[1].o[0];
+    ekf_aw.gyro.r = filt_rate[2].o[0];
 
-  ekf_aw.RPM_pusher = filt_pusher_prop_rpm.o[0];
-  ekf_aw.skew = filt_skew.o[0];
-  ekf_aw.elevator_angle = filt_elevator_pprz.o[0];
+    ekf_aw.euler.phi = filt_euler[0].o[0];
+    ekf_aw.euler.theta = filt_euler[1].o[0];
+    //ekf_aw.euler.psi = filt_euler[2].o[0];
+    ekf_aw.euler.psi = stateGetNedToBodyEulers_f()->psi; // TO DO: implement circular wrap filter for psi angle
 
-  ekf_aw.Vg_NED.x = filt_groundspeed[0].o[0];
-  ekf_aw.Vg_NED.y = filt_groundspeed[1].o[0];
-  ekf_aw.Vg_NED.z = filt_groundspeed[2].o[0];
+    for(int8_t i=0; i<4; i++) {
+    ekf_aw.RPM_hover[i] = filt_hover_prop_rpm[i].o[0];
+    }
 
-  ekf_aw.acc_filt.x = filt_acc_low[0].o[0];
-  ekf_aw.acc_filt.y = filt_acc_low[1].o[0];
-  ekf_aw.acc_filt.z = filt_acc_low[2].o[0];
+    ekf_aw.RPM_pusher = filt_pusher_prop_rpm.o[0];
+    ekf_aw.skew = filt_skew.o[0];
+    ekf_aw.elevator_angle = filt_elevator_pprz.o[0];
 
-  ekf_aw.V_pitot = filt_airspeed_pitot.o[0];
-  */
+    ekf_aw.Vg_NED.x = filt_groundspeed[0].o[0];
+    ekf_aw.Vg_NED.y = filt_groundspeed[1].o[0];
+    ekf_aw.Vg_NED.z = filt_groundspeed[2].o[0];
+
+    ekf_aw.acc_filt.x = filt_acc_low[0].o[0];
+    ekf_aw.acc_filt.y = filt_acc_low[1].o[0];
+    ekf_aw.acc_filt.z = filt_acc_low[2].o[0];
+
+    ekf_aw.V_pitot = filt_airspeed_pitot.o[0];
+  }
 
   // Sample time of EKF filter
   float sample_time = 1.0 / PERIODIC_FREQUENCY_AIRSPEED_EKF_FETCH;
@@ -329,7 +333,7 @@ void ekf_aw_wrapper_periodic(void){
 
   ekf_aw.internal_clock++;
 
-  ekf_aw.wind.x = get_sys_time_usec()-tic;
+  ekf_aw.offset.x = get_sys_time_usec()-tic;
 };
 
 // Function to get information from different modules and set it in the different filters
@@ -342,24 +346,24 @@ void ekf_aw_wrapper_fetch(void){
   update_butterworth_2_low_pass(&filt_groundspeed[1], stateGetSpeedNed_f()->y);
   update_butterworth_2_low_pass(&filt_groundspeed[2], stateGetSpeedNed_f()->z);
 
-  /*
-  // Transferring from NED to Body as body is not available right now
-  struct NedCoor_i *accel_tmp = stateGetAccelNed_i();
-  struct Int32Vect3 ned_accel_i,body_accel_i;
-  struct Int32RMat *ned_to_body_rmat = stateGetNedToBodyRMat_i();
-  VECT3_COPY(ned_accel_i, (*accel_tmp));
-  ned_accel_i.z += ACCEL_BFP_OF_REAL(-9.81); // Add gravity
-  int32_rmat_vmult(&body_accel_i, ned_to_body_rmat, &ned_accel_i);
-  struct FloatVect3 body_accel_f;
-  ACCELS_FLOAT_OF_BFP(body_accel_f, body_accel_i);
-  */
-  
-  // If body accel available, can use this
-  struct FloatVect3 body_accel_f;
-  struct Int32Vect3 *body_accel_i;
-  body_accel_i = stateGetAccelBody_i();
-  ACCELS_FLOAT_OF_BFP(body_accel_f, *body_accel_i);
-  
+  // Getting body accel
+  struct FloatVect3 body_accel_f = {0,0,0};
+  if (EKF_AW_WRAPPER_ROT_WING){
+    // If body accel available, can use this
+    struct Int32Vect3 *body_accel_i;
+    body_accel_i = stateGetAccelBody_i();
+    ACCELS_FLOAT_OF_BFP(body_accel_f, *body_accel_i);
+  }
+  else{
+    // Transferring from NED to Body as body is not available right now
+    struct NedCoor_i *accel_tmp = stateGetAccelNed_i();
+    struct Int32Vect3 ned_accel_i,body_accel_i;
+    struct Int32RMat *ned_to_body_rmat = stateGetNedToBodyRMat_i();
+    VECT3_COPY(ned_accel_i, (*accel_tmp));
+    ned_accel_i.z += ACCEL_BFP_OF_REAL(-9.81); // Add gravity
+    int32_rmat_vmult(&body_accel_i, ned_to_body_rmat, &ned_accel_i);
+    ACCELS_FLOAT_OF_BFP(body_accel_f, body_accel_i);
+  }
 
   // Body accel
   update_butterworth_2_low_pass(&filt_acc[0], body_accel_f.x);
@@ -387,9 +391,13 @@ void ekf_aw_wrapper_fetch(void){
   update_butterworth_2_low_pass(&filt_pusher_prop_rpm, ekf_aw.last_RPM_pusher*1.0f);
 
   // FOR DEBUG
-  //update_butterworth_2_low_pass(&filt_skew, 0.0f);
-  update_butterworth_2_low_pass(&filt_skew, wing_rotation.wing_angle_rad);
-
+  if (EKF_AW_WRAPPER_ROT_WING){
+    update_butterworth_2_low_pass(&filt_skew, wing_rotation.wing_angle_rad);
+  }
+  else{
+    update_butterworth_2_low_pass(&filt_skew, 0.0f);
+  }
+  
   // Get elevator pprz signal
   int16_t *elev_pprz = &actuators_pprz[5];
   // Calculate deflection angle in [deg]
@@ -398,7 +406,7 @@ void ekf_aw_wrapper_fetch(void){
   update_butterworth_2_low_pass(&filt_airspeed_pitot, stateGetAirspeed_f());
 
   // FOR DEBUG
-  ekf_aw.wind.y = get_sys_time_usec()-tic_2;
+  ekf_aw.offset.y = get_sys_time_usec()-tic_2;
 };
 
 // ABI callback that obtains the RPM from a module
@@ -441,3 +449,28 @@ static void rpm_cb(uint8_t sender_id __attribute__((unused)), struct rpm_act_t *
 		}
 		ekf_aw.in_air = in_air;
 	}
+
+  /*
+  For this debug config:
+
+  To start the filter manually (won't turn on automatically):
+  -"Start" dlsetting can be used to put filter on
+
+  To send random values in the filter:
+  - Set define EKF_AW_WRAPPER_RANDOM_INPUTS in ekf_aw_wrapper.c to true
+
+  To check filter timing:
+  - time required to run whole filter propagation sent on telemetry AIRSPEED_WIND_ESTIMATOR_EKF "offset_x"
+    Note: Tests on the board alone give a total time of 140 micro sec
+  - time required to run different parts of filter sent on telementry  AIRSPEED_WIND_ESTIMATOR_EKF_FORCES, on different fields
+
+  To check if RPM value received from ABI message are fine:
+  - Pusher RPM is sent on telemetry AIRSPEED_WIND_ESTIMATOR_EKF "debug 1"
+  - Hover RPM [0] is sent on telemetry AIRSPEED_WIND_ESTIMATOR_EKF "debug 2"
+  - Hover RPM [1] is sent on telemetry AIRSPEED_WIND_ESTIMATOR_EKF "debug 3"
+  
+  If filter crashes everything, can turn on EKF_AW_TELEMERY_DEBUG in ekf_aw.cpp to true. This will send a telemetry AIRSPEED_WIND_ESTIMATOR_EKF_COV
+   with a number in the "Q_accel" field at different stages of the filter. With the last telemetry message received or logged, this will give an idea of what creates the issue.
+   
+   Note that with the debug option EKF_AW_TELEMERY_DEBUG to true, telemetry messages slow down the filter considerably (runtime from 140 to 550 micro sec)  
+  */
