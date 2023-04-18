@@ -157,7 +157,7 @@
         <define name="EKF_AW_K_FY_BETA"  value="-2.19E-1f" description="Fy v (side velocity) coefficient"/>
         <define name="EKF_AW_K_FY_V"     value="-3.2E-1f" description="Fy beta coefficient"/>
 
-        <define name="EKF_AW_WRAPPER_DEBUG"     value="true" description="debug mode to send cov telemetry"/>
+        <define name="EKF_AW_WRAPPER_DEBUG"     value="false" description="debug mode to send cov telemetry"/>
         </module>
     </firmware>
 
