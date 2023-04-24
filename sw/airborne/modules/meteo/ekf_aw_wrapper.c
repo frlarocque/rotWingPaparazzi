@@ -25,6 +25,7 @@
 #define EKF_AW_WRAPPER_RANDOM_INPUTS false
 #endif
 
+
 #if PERIODIC_TELEMETRY
 #include "modules/datalink/telemetry.h"
 
@@ -50,25 +51,16 @@ static void send_airspeed_wind_ekf(struct transport_tx *trans, struct link_devic
                               &ekf_aw.offset.y,
                               &ekf_aw.offset.z,
                               &healthy,
-                              &ekf_aw.health.crashes_n,
-                              &ekf_aw.innov_V_gnd.x,
-                              &ekf_aw.innov_V_gnd.y,
-                              &ekf_aw.innov_V_gnd.z,
-                              &ekf_aw.innov_acc_filt.x,
-                              &ekf_aw.innov_acc_filt.y,
-                              &ekf_aw.innov_acc_filt.z,
-                              &ekf_aw.innov_V_pitot,
-                              &ekf_aw.last_RPM_pusher,
-                              &ekf_aw.last_RPM_hover[0],
-                              &ekf_aw.last_RPM_hover[1]);
+                              &ekf_aw.health.crashes_n);
                               
 }
 #if EKF_AW_WRAPPER_DEBUG
   // FOR DEBUG
-  /*
+  
   // Telemetry Message function
   static void send_airspeed_wind_ekf_cov(struct transport_tx *trans, struct link_device *dev)
   {
+    /*
     //&(DefaultChannel).trans_tx, &(DefaultDevice).device
     pprz_msg_send_AIRSPEED_WIND_ESTIMATOR_EKF_COV(trans, dev, AC_ID,
                                 &ekf_aw.process_cov[0],
@@ -91,9 +83,9 @@ static void send_airspeed_wind_ekf(struct transport_tx *trans, struct link_devic
                                 &ekf_aw.state_cov[6],
                                 &ekf_aw.state_cov[7],
                                 &ekf_aw.state_cov[8]);
-                                
+    */                        
   }
-  */
+  
   // Telemetry Message function
   static void send_airspeed_wind_ekf_forces(struct transport_tx *trans, struct link_device *dev)
   {
@@ -195,7 +187,7 @@ void ekf_aw_wrapper_init(void){
     #if (EKF_AW_WRAPPER_DEBUG)
       // FOR DEBUG
       //register_periodic_telemetry(DefaultPeriodic, PPRZ_MSG_ID_AIRSPEED_WIND_ESTIMATOR_EKF_COV, send_airspeed_wind_ekf_cov);
-      register_periodic_telemetry(DefaultPeriodic, PPRZ_MSG_ID_AIRSPEED_WIND_ESTIMATOR_EKF_FORCES, send_airspeed_wind_ekf_forces);
+      //register_periodic_telemetry(DefaultPeriodic, PPRZ_MSG_ID_AIRSPEED_WIND_ESTIMATOR_EKF_FORCES, send_airspeed_wind_ekf_forces);
     #endif
   #endif
 
@@ -214,6 +206,30 @@ void ekf_aw_wrapper_init(void){
 
   // FOR DEBUG
   ekf_aw.start = false;
+
+  // FOR DEBUG
+  ekf_aw.last_RPM_hover[0] = 0;ekf_aw.last_RPM_hover[1] = 0;ekf_aw.last_RPM_hover[2] = 0;ekf_aw.last_RPM_hover[3] = 0;
+  ekf_aw.last_RPM_pusher = 0;
+
+  ekf_aw.V_body.x = 0; ekf_aw.V_body.y = 0; ekf_aw.V_body.z = 0;
+  ekf_aw.wind.x = 0;   ekf_aw.wind.y = 0;   ekf_aw.wind.z = 0;
+  ekf_aw.offset.x = 0; ekf_aw.offset.y = 0; ekf_aw.offset.z = 0;
+  ekf_aw.health.healthy = true; ekf_aw.health.crashes_n = 0;
+  ekf_aw.innov_V_gnd.x = 0; ekf_aw.innov_V_gnd.y = 0; ekf_aw.innov_V_gnd.z = 0;
+  ekf_aw.innov_acc_filt.y = 0;ekf_aw.innov_acc_filt.y = 0;ekf_aw.innov_acc_filt.z = 0;
+  ekf_aw.innov_V_pitot = 0;
+
+  ekf_aw.fuselage_force[0] = 0;ekf_aw.fuselage_force[1] = 0;ekf_aw.fuselage_force[2] = 0;
+  ekf_aw.wing_force[0] = 0;ekf_aw.wing_force[1] = 0;ekf_aw.wing_force[2] = 0;
+  ekf_aw.elevator_force[0] = 0;ekf_aw.elevator_force[1] = 0;ekf_aw.elevator_force[2] = 0;
+  ekf_aw.pusher_force[0] = 0;ekf_aw.pusher_force[1] = 0;ekf_aw.pusher_force[2] = 0;
+  ekf_aw.hover_force[0] = 0;ekf_aw.hover_force[1] = 0;ekf_aw.hover_force[2] = 0;
+
+  ekf_aw.skew = 0;
+  ekf_aw.elevator_angle = 0; 
+  ekf_aw.RPM_pusher = 0;
+  ekf_aw.RPM_hover[0] = 0; ekf_aw.RPM_hover[1] = 0; ekf_aw.RPM_hover[2] = 0; ekf_aw.RPM_hover[3] = 0;
+
 };
 
 void ekf_aw_wrapper_periodic(void){

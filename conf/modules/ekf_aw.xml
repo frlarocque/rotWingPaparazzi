@@ -124,19 +124,12 @@
   </header>
   <init fun="ekf_aw_wrapper_init()"/>
   <periodic fun="ekf_aw_wrapper_periodic()" freq="50."  autorun="TRUE"/>
-  <periodic fun="ekf_aw_wrapper_fetch()" freq="100."  autorun="TRUE"/>
+  <periodic fun="ekf_aw_wrapper_fetch()" freq="50."  autorun="TRUE"/>
+  
   <makefile target="ap|nps">
     <file name="ekf_aw.cpp"/>
     <file name="ekf_aw_wrapper.c"/>
-    <!--If using eigen
-    <define name="EIGEN_NO_MALLOC"/>
-    <define name="EIGEN_NO_AUTOMATIC_RESIZING"/>
-    <include name="../ext/eigen"/>
-    -->
     <include name="$(PAPARAZZI_SRC)/sw/ext/matrix/"/>
-  </makefile>
-  <makefile target="ap">
-    <define name="EIGEN_NO_DEBUG"/>
   </makefile>
 </module>
 
