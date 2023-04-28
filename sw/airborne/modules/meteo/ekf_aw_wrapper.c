@@ -13,7 +13,7 @@
 
 #include "mcu_periph/sys_time.h" // FOR DEBUG
 
-#include "modules/rot_wing_drone/wing_rotation_controller_v3a.h"
+#include "modules/rot_wing_drone/wing_rotation_controller_v3b.h"
 
 #ifndef EKF_AW_WRAPPER_DEBUG
 #define EKF_AW_WRAPPER_DEBUG true
@@ -41,17 +41,17 @@ static void send_airspeed_wind_ekf(struct transport_tx *trans, struct link_devic
   uint8_t healthy = (uint8_t)ekf_aw.health.healthy;
   
   pprz_msg_send_AIRSPEED_WIND_ESTIMATOR_EKF(trans, dev, AC_ID,
-                              &ekf_aw.V_body.x,
-                              &ekf_aw.V_body.y,
-                              &ekf_aw.V_body.z,
-                              &ekf_aw.wind.x,
-                              &ekf_aw.wind.y,
-                              &ekf_aw.wind.z,
-                              &ekf_aw.offset.x,
-                              &ekf_aw.offset.y,
-                              &ekf_aw.offset.z,
+                              &ekf_aw.V_body.x,&ekf_aw.V_body.y,&ekf_aw.V_body.z,
+                              &ekf_aw.wind.x,&ekf_aw.wind.y,&ekf_aw.wind.z,
+                              &ekf_aw.offset.x,&ekf_aw.offset.y,&ekf_aw.offset.z,
                               &healthy,
-                              &ekf_aw.health.crashes_n);
+                              &ekf_aw.health.crashes_n,
+                              &ekf_aw.innov_V_gnd.x,&ekf_aw.innov_V_gnd.y,&ekf_aw.innov_V_gnd.z,
+                              &ekf_aw.innov_acc_filt.x,&ekf_aw.innov_acc_filt.y,&ekf_aw.innov_acc_filt.z,
+                              &ekf_aw.innov_V_pitot,
+                              &ekf_aw.RPM_pusher,
+                              &ekf_aw.RPM_hover[0],
+                              &ekf_aw.RPM_hover[1]);
                               
 }
 #if EKF_AW_WRAPPER_DEBUG
