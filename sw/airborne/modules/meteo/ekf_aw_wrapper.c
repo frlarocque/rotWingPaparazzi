@@ -131,9 +131,9 @@ float tau_filter_low = 0.2;
 bool reset_filter = false;
 
 struct NedCoor_f zero_speed = {
-    .x = 0,
-    .y = 0,
-    .z = 0
+    .x = 0.0,
+    .y = 0.0,
+    .z = 0.0
   };
 
 // Define filter arrays
@@ -211,24 +211,24 @@ void ekf_aw_wrapper_init(void){
   ekf_aw.last_RPM_hover[0] = 0;ekf_aw.last_RPM_hover[1] = 0;ekf_aw.last_RPM_hover[2] = 0;ekf_aw.last_RPM_hover[3] = 0;
   ekf_aw.last_RPM_pusher = 0;
 
-  ekf_aw.V_body.x = 0; ekf_aw.V_body.y = 0; ekf_aw.V_body.z = 0;
-  ekf_aw.wind.x = 0;   ekf_aw.wind.y = 0;   ekf_aw.wind.z = 0;
-  ekf_aw.offset.x = 0; ekf_aw.offset.y = 0; ekf_aw.offset.z = 0;
-  ekf_aw.health.healthy = true; ekf_aw.health.crashes_n = 0;
-  ekf_aw.innov_V_gnd.x = 0; ekf_aw.innov_V_gnd.y = 0; ekf_aw.innov_V_gnd.z = 0;
-  ekf_aw.innov_acc_filt.y = 0;ekf_aw.innov_acc_filt.y = 0;ekf_aw.innov_acc_filt.z = 0;
-  ekf_aw.innov_V_pitot = 0;
+  ekf_aw.V_body.x = 0.0f; ekf_aw.V_body.y = 0.0f; ekf_aw.V_body.z = 0.0f;
+  ekf_aw.wind.x = 0.0f;   ekf_aw.wind.y = 0.0f;   ekf_aw.wind.z = 0.0f;
+  ekf_aw.offset.x = 0.0f; ekf_aw.offset.y = 0.0f; ekf_aw.offset.z = 0.0f;
+  ekf_aw.health.healthy = true; ekf_aw.health.crashes_n = 0.0f;
+  ekf_aw.innov_V_gnd.x = 0.0f; ekf_aw.innov_V_gnd.y = 0.0f; ekf_aw.innov_V_gnd.z = 0.0f;
+  ekf_aw.innov_acc_filt.y = 0.0f;ekf_aw.innov_acc_filt.y = 0.0f;ekf_aw.innov_acc_filt.z = 0.0f;
+  ekf_aw.innov_V_pitot = 0.0f;
 
-  ekf_aw.fuselage_force[0] = 0;ekf_aw.fuselage_force[1] = 0;ekf_aw.fuselage_force[2] = 0;
-  ekf_aw.wing_force[0] = 0;ekf_aw.wing_force[1] = 0;ekf_aw.wing_force[2] = 0;
-  ekf_aw.elevator_force[0] = 0;ekf_aw.elevator_force[1] = 0;ekf_aw.elevator_force[2] = 0;
-  ekf_aw.pusher_force[0] = 0;ekf_aw.pusher_force[1] = 0;ekf_aw.pusher_force[2] = 0;
-  ekf_aw.hover_force[0] = 0;ekf_aw.hover_force[1] = 0;ekf_aw.hover_force[2] = 0;
+  ekf_aw.fuselage_force[0] = 0.0f;ekf_aw.fuselage_force[1] = 0.0f;ekf_aw.fuselage_force[2] = 0.0f;
+  ekf_aw.wing_force[0] = 0.0f;ekf_aw.wing_force[1] = 0.0f;ekf_aw.wing_force[2] = 0.0f;
+  ekf_aw.elevator_force[0] = 0.0f;ekf_aw.elevator_force[1] = 0.0f;ekf_aw.elevator_force[2] = 0.0f;
+  ekf_aw.pusher_force[0] = 0.0f;ekf_aw.pusher_force[1] = 0.0f;ekf_aw.pusher_force[2] = 0.0f;
+  ekf_aw.hover_force[0] = 0.0f;ekf_aw.hover_force[1] = 0.0f;ekf_aw.hover_force[2] = 0.0f;
 
-  ekf_aw.skew = 0;
-  ekf_aw.elevator_angle = 0; 
-  ekf_aw.RPM_pusher = 0;
-  ekf_aw.RPM_hover[0] = 0; ekf_aw.RPM_hover[1] = 0; ekf_aw.RPM_hover[2] = 0; ekf_aw.RPM_hover[3] = 0;
+  ekf_aw.skew = 0.0f;
+  ekf_aw.elevator_angle = 0.0f; 
+  ekf_aw.RPM_pusher = 0.0f;
+  ekf_aw.RPM_hover[0] = 0.0f; ekf_aw.RPM_hover[1] = 0.0f; ekf_aw.RPM_hover[2] = 0.0f; ekf_aw.RPM_hover[3] = 0.0f;
 
 };
 
