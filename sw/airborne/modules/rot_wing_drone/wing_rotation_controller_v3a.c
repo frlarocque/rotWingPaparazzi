@@ -24,6 +24,9 @@
  */
 
 #include "modules/rot_wing_drone/wing_rotation_controller_v3a.h"
+#include "modules/radio_control/radio_control.h"
+
+#include "state.h"
 
 #include <stdlib.h>
 #include "mcu_periph/adc.h"
@@ -55,11 +58,11 @@
 #endif
 
 #ifndef WING_ROTATION_FIRST_DYN
-#define WING_ROTATION_FIRST_DYN 0.002
+#define WING_ROTATION_FIRST_DYN 0.001
 #endif
 
 #ifndef WING_ROTATION_SECOND_DYN
-#define WING_ROTATION_SECOND_DYN 0.006
+#define WING_ROTATION_SECOND_DYN 0.003
 #endif
 
 // Parameters
@@ -104,6 +107,7 @@ void wing_rotation_init(void)
   wing_rotation.wing_rotation_first_order_dynamics = WING_ROTATION_FIRST_DYN;
   wing_rotation.wing_rotation_second_order_dynamics = WING_ROTATION_SECOND_DYN;
   wing_rotation.adc_wing_rotation_range = WING_ROTATION_POSITION_ADC_90 - WING_ROTATION_POSITION_ADC_0;
+  wing_rotation.airspeed_scheduling = false;
 
   // Set wing angle to current wing angle
   wing_rotation.initialized = false; 
@@ -132,13 +136,36 @@ void wing_rotation_periodic(void)
 
 void wing_rotation_event(void)
 {
-  // your event code here
+  // First check if safety switch is triggered
+  #ifdef WING_ROTATION_RESET_RADIO_CHANNEL
+  // Update wing_rotation deg setpoint when RESET switch triggered
+  if (radio_control.values[WING_ROTATION_RESET_RADIO_CHANNEL] > 1750)
+  {
+      wing_rotation.airspeed_scheduling = false;
+      wing_rotation.wing_angle_deg_sp = 0;
+  }
+  #endif
 
   // Update Wing position sensor
   wing_rotation_to_rad();
 
   // Run control if initialized
   if (wing_rotation.initialized) {
+
+    if (wing_rotation.airspeed_scheduling)
+    { 
+      float wing_angle_scheduled_sp_deg = 0;
+      float airspeed = stateGetAirspeed_f();
+      if (airspeed < 6)
+      {
+        wing_angle_scheduled_sp_deg = 0;
+      } else {
+        wing_angle_scheduled_sp_deg = (airspeed - 6.) * 9.;
+      }
+      Bound(wing_angle_scheduled_sp_deg, 0., 90.);
+      wing_rotation.wing_angle_deg_sp = wing_angle_scheduled_sp_deg;
+    }
+
     wing_rotation_update_sp();
 
     //int32_t servo_pprz_cmd;  // Define pprz cmd
@@ -157,10 +184,10 @@ void wing_rotation_to_rad(void)
   #if !USE_NPS
   wing_rotation.adc_wing_rotation = buf_wing_rot_pos.sum / buf_wing_rot_pos.av_nb_sample;
 
-  wing_rotation.wing_angle_deg =  - 0.00000000001090296468811 * (float)wing_rotation.adc_wing_rotation * (float)wing_rotation.adc_wing_rotation * (float)wing_rotation.adc_wing_rotation 
-                                  + 0.000001522461604547 * (float)wing_rotation.adc_wing_rotation * (float)wing_rotation.adc_wing_rotation 
-                                  - 0.073578367127617 * (float)wing_rotation.adc_wing_rotation
-                                  + 1286.46225540187;
+  wing_rotation.wing_angle_deg =  -2.65302456619e-12 * (float)wing_rotation.adc_wing_rotation * (float)wing_rotation.adc_wing_rotation * (float)wing_rotation.adc_wing_rotation 
+                                  + 3.743648588699e-7 * (float)wing_rotation.adc_wing_rotation * (float)wing_rotation.adc_wing_rotation 
+                                  - 0.02145571907765 * (float)wing_rotation.adc_wing_rotation
+                                  + 511.027281901372;
   wing_rotation.wing_angle_rad = wing_rotation.wing_angle_deg / 180. * M_PI;
 
   #else
