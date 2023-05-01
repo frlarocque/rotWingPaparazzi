@@ -48,6 +48,7 @@
         <target name="nps" board="pc">
             <module name="radio_control" type="datalink"/>
             <module name="fdm" type="jsbsim"/>
+            <module name="ctrl_eff_sched_rot_wing_v3a"/>
 
             <!--Not dealing with these in the simulation-->
             <define name="RADIO_TH_HOLD"     value="0"/> <!-- Throttle hold in command laws -->
@@ -83,10 +84,11 @@
         </module>
 
         <module TYPE="indi" NAME="stabilization">
-            <configure name="INDI_NUM_ACT" value="6"/>
+            <configure name="INDI_NUM_ACT" value="8"/>
         </module>
 
         <module name="guidance" type="indi_rot_wing"/>
+        <module name="nav_hybrid"/>
 
         <module TYPE="ekf2" NAME="ins"/>
 
@@ -111,6 +113,7 @@
             <define name="WING_ROTATION_DEADZONE_PPRZ_CMD" value="500"/>
             <define name="WING_ROTATION_P_GAIN" value="-50000"/>
             <define name="WING_ROTATION_MAX_CMD" value="9600"/>
+            <define name="WING_ROTATION_RESET_RADIO_CHANNEL" value="10"/>
         </module>
 
         <module name="sys_id_doublet">
@@ -127,8 +130,6 @@
 
         <!--Airspeed estimation using EKF-->
         <module name="ekf_aw">
-            <define name="PERIODIC_FREQUENCY_AIRSPEED_EKF" value="5" description="Airspeed periodic frequency"/>
-            <define name="PERIODIC_FREQUENCY_AIRSPEED_EKF_FETCH" value="5" description="Airspeed periodic fetch frequency"/>
             
             <define name="EKF_AW_P0_V_body"  value="1.E-2f" description="Initial covariance body velocity"/>
             <define name="EKF_AW_P0_mu"      value="1.E-5f" description="Initial covariance wind"/>
@@ -145,27 +146,43 @@
             <define name="EKF_AW_R_accel_filt_z" value="1.E-5f" description="Filtered z accel measurement noise"/>
             <define name="EKF_AW_R_V_pitot"      value="1.E-7f" description="Pitot Tube Velocity measurement noise"/>
 
+            <define name="EKF_AW_AZ_SCHED_GAIN"     value="2" />
+            <define name="EKF_AW_AZ_SCHED_START_DEG"     value="60" />
+            <define name="EKF_AW_AZ_SCHED_END_DEG"     value="70" />
+
+            <define name="EKF_AW_AX_SCHED_GAIN"     value="0" />
+            <define name="EKF_AW_AX_SCHED_START_DEG"     value="45" />
+            <define name="EKF_AW_AX_SCHED_END_DEG"     value="60" />
+
+            <define name="EKF_AW_QUICK_CONVERGENCE"     value="True" />
+            <define name="EKF_AW_QUICK_CONVERGENCE_TIME"     value="15" />
+
             <define name="EKF_AW_WING_INSTALLED"   value="false" description="Use wing contribution"/>
-            <define name="EKF_AW_USE_MODEL_BASED_X"  value="false" description="Use model based to augment filter"/>
-            <define name="EKF_AW_USE_MODEL_BASED_Y"  value="false" description="Use model based to augment filter"/>
-            <define name="EKF_AW_USE_MODEL_BASED_Z"  value="false" description="Use model based to augment filter"/>
+            <define name="EKF_AW_USE_MODEL_BASED_X"  value="true" description="Use model based to augment filter"/>
+            <define name="EKF_AW_USE_MODEL_BASED_Y"  value="true" description="Use model based to augment filter"/>
+            <define name="EKF_AW_USE_MODEL_BASED_Z"  value="true" description="Use model based to augment filter"/>
 
-            <define name="EKF_AW_VEHICLE_MASS" value="5.75" description="Mass of the vehicle"/>
+            <define name="EKF_AW_VEHICLE_MASS" value="6.5" description="Mass of the vehicle"/>
 
-            <define name="EKF_AW_K1_FX_DRAG" value="-3.0E-1f" description="Drag coefficient linear to u used if use model based is set to false"/>
-            <define name="EKF_AW_K2_FX_DRAG" value="-4.0E-2f" description="Drag coefficient linear to u^2 used if use model based is set to false"/>
+            <define name="EKF_AW_K2_FX_FUSELAGE" value="-4E-2f" description="K*u*u"/>
+            <define name="EKF_AW_K3_FX_HOVER" value="-3E-1f" description="K*u"/>
+
+            <define name="EKF_AW_K1_FX_WING" value="-3.21432e-02f" description="Fx2 = (k1*(1+k5*skew)+(k2*alpha+k3*alpha^2))*(sin(skew)^2+k4)*V^2"/>
+            <define name="EKF_AW_K2_FX_WING" value="1.67195e-01f" description="Fx2 = (k1*(1+k5*skew)+(k2*alpha+k3*alpha^2))*(sin(skew)^2+k4)*V^2"/>
+            <define name="EKF_AW_K3_FX_WING" value="5.9441e-01f" description="Fx2 = (k1*(1+k5*skew)+(k2*alpha+k3*alpha^2))*(sin(skew)^2+k4)*V^2"/>
+            <define name="EKF_AW_K4_FX_WING" value="3.9839e-03f" description="Fx2 = (k1*(1+k5*skew)+(k2*alpha+k3*alpha^2))*(sin(skew)^2+k4)*V^2"/>
+            <define name="EKF_AW_K5_FX_WING" value="3.5321e-03f" description="Fx2 = (k1*(1+k5*skew)+(k2*alpha+k3*alpha^2))*(sin(skew)^2+k4)*V^2"/>
 
             <define name="EKF_AW_K_FY_V"     value="-3.2E-1f" description="Fy beta coefficient"/>
+            <define name="EKF_AW_K1_FY_WING" value="0.0f" description="Fy = K1*cos(skew)*sin(skew)*u^2"/>
+
+            <define name="EKF_AW_K1_FZ_WING" value="-1.0008e-01f" description="Fz1 = ((k1+k2*alpha+k3*alpha^2)*(sin(skew)^2+k4)*V^2"/>
+            <define name="EKF_AW_K2_FZ_WING" value="-8.6965e-01f" description="Fz1 = ((k1+k2*alpha+k3*alpha^2)*(sin(skew)^2+k4)*V^2"/>
+            <define name="EKF_AW_K3_FZ_WING" value="1.45783e-01f" description="Fz1 = ((k1+k2*alpha+k3*alpha^2)*(sin(skew)^2+k4)*V^2"/>
+            <define name="EKF_AW_K4_FZ_WING" value="2.185395e-01f" description="Fz1 = ((k1+k2*alpha+k3*alpha^2)*(sin(skew)^2+k4)*V^2"/>
 
             <define name="EKF_AW_TELEMETRY_DEBUG"     value="false" description="debug mode to send timing info through telemetry"/>
         </module>
-
-        <!--Airspeed estimation using EKF
-        <module name="ekf_aw">
-            <define name="EKF_AW_WRAPPER_DEBUG"     value="true" description="debug mode to send cov telemetry"/>
-        </module>
-        -->
-        
     </firmware>
 
     <servos DRIVER="Pwm">
@@ -214,13 +231,12 @@
         <set VALUE="($th_hold? -9600 : actuators_pprz[1])" SERVO="MOTOR_RIGHT"/>
         <set VALUE="($th_hold? -9600 : actuators_pprz[2])" SERVO="MOTOR_BACK"/>
         <set VALUE="($th_hold? -9600 : actuators_pprz[3])" SERVO="MOTOR_LEFT"/>
-        <!-- <set VALUE="($th_hold? 0 : actuators_pprz[4])" SERVO="SERVO_RUDDER"/> -->
-        <set VALUE="0" SERVO="SERVO_RUDDER"/>
+        <set VALUE="($th_hold? 0 : actuators_pprz[4])" SERVO="SERVO_RUDDER"/>
         <set VALUE="($th_hold? 0 : actuators_pprz[5])" SERVO="SERVO_ELEVATOR"/>
-        <set VALUE="($th_hold? -9600 : actuators_pprz[6])" SERVO="MOTOR_PUSH"/>
+        <set VALUE="($th_hold? -9600 : actuators_pprz[8])" SERVO="MOTOR_PUSH"/>
         <set VALUE="wing_rotation.servo_pprz_cmd" SERVO="SERVO_ROTWING"/>
-        <set VALUE="0" SERVO="SERVO_AIL_LEFT"/>
-        <set VALUE="0" SERVO="SERVO_AIL_RIGHT"/>
+        <set VALUE="($th_hold? 0 : actuators_pprz[6])" SERVO="SERVO_AIL_LEFT"/>
+        <set VALUE="($th_hold? 0 : actuators_pprz[7])" SERVO="SERVO_AIL_RIGHT"/>
 
         <!-- Backup commands -->
         <set VALUE="($th_hold? -9600 : actuators_pprz[0])" SERVO="BMOTOR_FRONT"/>
@@ -296,29 +312,30 @@
         <define VALUE="{1.6, 0.0,   -1.6, 0.0, 0.0, 0.0}" NAME="G1_PITCH"/>
         <define VALUE="{-0.2, 0.1, -0.35, 0.35, 0.0, 0.0}" NAME="G1_YAW"/>-->
         <!--With tail effectiveness values-->
-        <define VALUE="{0.0, -8.7, 0.0,   8.9, 0.0, 0.0}" NAME="G1_ROLL"/>
-        <define VALUE="{1.2, 0.0,   -1.3, 0.0, 0.0, 0.0}" NAME="G1_PITCH"/>
-        <define VALUE="{-0.17, 0.25, -0.33, 0.25, 0.0, 0.0}" NAME="G1_YAW"/>
+        <define VALUE="{0.0, -8.7, 0.0,   8.9, 0.0, 0.0, 0.0, 0.0}" NAME="G1_ROLL"/>
+        <define VALUE="{1.2, 0.0,   -1.3, 0.0, 0.0, 0.0, 0.0, 0.0}" NAME="G1_PITCH"/>
+        <define VALUE="{-0.17, 0.25, -0.33, 0.25, 0.0, 0.0, 0.0, 0.0}" NAME="G1_YAW"/>
         <!--<define VALUE="{-0.2, 0.2, -0.2, 0.2, 0.0, 0.0}" NAME="G1_YAW"/>-->
         <!--With wing effectiveness values-->
         <!-- <define VALUE="{0.0, -8.3, 0.0,   8.7, 0.0, 0.0}" NAME="G1_ROLL"/>
         <define VALUE="{0.81, 0.0,   -0.97, 0.0, 0.0, 0.0}" NAME="G1_PITCH"/>
         <define VALUE="{-0.17, 0.25, -0.33, 0.25, 0.0, 0.0}" NAME="G1_YAW"/> -->
-        <define VALUE="{-0.55,   -0.45,  -0.55, -0.45, 0.0, 0.0}" NAME="G1_THRUST"/>
-        <define VALUE="{0.0, 0.0, 0.0, 0.0, 0.0, 0.0}" NAME="G2"/>
+        <!-- <define VALUE="{-0.55,   -0.45,  -0.55, -0.45, 0.0, 0.0}" NAME="G1_THRUST"/> -->
+        <define VALUE="{-0.47,   -0.38,  -0.47, -0.38, 0.0, 0.0, 0.0, 0.0}" NAME="G1_THRUST"/>
+        <define VALUE="{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0}" NAME="G2"/>
         <define VALUE="0.00055" NAME="PUSHER_PROP_EFFECTIVENESS"/>
-        <define VALUE="0.047" NAME="PUSHER_PROP_DYN"/>
+        <define VALUE="0.034" NAME="PUSHER_PROP_DYN"/>
         <!--<define VALUE="{0.00, -30.0, 0.0,   30.0}" NAME="G1_ROLL"/>
         <define VALUE="{6.0, 0.0,   -6.0, 0.0}" NAME="G1_PITCH"/>
         <define VALUE="{-1.1, 1.1, -1.1, 1.1}" NAME="G1_YAW"/>
         <define VALUE="{-0.5,   -0.5,  -0.5,   -0.5}" NAME="G1_THRUST"/>
         <define VALUE="{0.0, 0.0, 0.0, 0.0}" NAME="G2"/>-->
-        <define VALUE="50.0" NAME="REF_ERR_P"/>
+        <define VALUE="40.0" NAME="REF_ERR_P"/>
         <define VALUE="32.0" NAME="REF_ERR_Q"/>
-        <define VALUE="30.0" NAME="REF_ERR_R"/>
+        <define VALUE="23.0" NAME="REF_ERR_R"/>
         <define VALUE="7.0" NAME="REF_RATE_P"/>
         <define VALUE="8.0" NAME="REF_RATE_Q"/>
-        <define VALUE="9.0" NAME="REF_RATE_R"/>
+        <define VALUE="5.0" NAME="REF_RATE_R"/>
         <define VALUE="30.0" UNIT="deg/s" NAME="MAX_R"/>
         <define VALUE="5.0" NAME="FILT_CUTOFF_P"/>
         <define VALUE="5.0" NAME="FILT_CUTOFF_Q"/>
@@ -327,8 +344,8 @@
         <define VALUE="0.5" NAME="FILT_CUTOFF_RDOT"/>
         <define VALUE="2.0" NAME="ESTIMATION_FILT_CUTOFF"/>
         <define VALUE="TRUE" NAME="FILTER_YAW_RATE"/>
-        <define VALUE="{0.03, 0.025, 0.03, 0.025, 0.1, 0.1}" NAME="ACT_DYN"/>
-        <define VALUE="{0, 0, 0, 0, 1, 1}" NAME="ACT_IS_SERVO"/>
+        <define VALUE="{0.03, 0.025, 0.03, 0.025, 0.1, 0.1,0.1,0.1}" NAME="ACT_DYN"/>
+        <define VALUE="{0, 0, 0, 0, 1, 1, 1, 1}" NAME="ACT_IS_SERVO"/>
         <define VALUE="{1000, 1000, 1, 100}" NAME="WLS_PRIORITIES"/>
         <define VALUE="FALSE" NAME="USE_ADAPTIVE"/>
         <define VALUE="0.001" NAME="ADAPTIVE_MU"/>
@@ -371,7 +388,7 @@
         <define name="HEADING_BANK_GAIN" value="5."/>
         <define name="MAX_AIRSPEED" value="10.0"/>
         <define name="PITCH_LIFT_EFF" value="0.0"/>
-        <define name="ZERO_AIRSPEED" value="TRUE"/>
+        <!-- <define name="ZERO_AIRSPEED" value="TRUE"/> -->
         <!--<define name="MIN_THROTTLE" value="0."/>
         <define name="MIN_PITCH" value="-35."/>
         <define name="MAX_PITCH" value="35."/>
@@ -402,10 +419,10 @@
     </section>
 
     <section name="SIMULATOR" prefix="NPS_">
-        <define name="ACTUATOR_NAMES" value="front_motor, right_motor, back_motor, left_motor, rudder, pusher" type="string[]"/>
+        <define name="ACTUATOR_NAMES" value="front_motor, right_motor, back_motor, left_motor, rudder, elevator, aileron_left, aileron_right, pusher" type="string[]"/>
         <define name="JSBSIM_MODEL" value="rotwingv3a" type="string"/>
         <define name="SENSORS_PARAMS" value="nps_sensors_params_default.h" type="string"/>
-        <define name="COMMANDS_NB" value="6"/>
+        <define name="COMMANDS_NB" value="9"/>
         <define name="NO_MOTOR_MIXING" value="TRUE"/>
         <define name="JS_AXIS_MODE" value="4"/>
     </section>

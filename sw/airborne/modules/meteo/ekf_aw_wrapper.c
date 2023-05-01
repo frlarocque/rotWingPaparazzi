@@ -21,6 +21,12 @@
 #ifndef EKF_AW_WRAPPER_RANDOM_INPUTS
 #define EKF_AW_WRAPPER_RANDOM_INPUTS false
 #endif
+#ifndef EKF_AW_QUICK_CONVERGENCE
+#define EKF_AW_QUICK_CONVERGENCE false
+#endif
+#ifndef EKF_AW_QUICK_CONVERGENCE_TIME
+#define EKF_AW_QUICK_CONVERGENCE_TIME 10.0f
+#endif
 #ifndef EKF_AW_DEBUG
 #define EKF_AW_DEBUG false
 #endif
@@ -29,11 +35,8 @@
 #if PERIODIC_TELEMETRY
 #include "modules/datalink/telemetry.h"
 
-// TO DO: Get hover prop RPM
-// TO DO: Get pusher prop RPM
 // TO DO: implement circular wrap filter for psi angle
-// TO DO: side force transition
-// TO DO: modify force functions to simpler model (fuselage, elevator, hover propellers)
+// TO DO: modify force functions to simpler model (wing)
 
 // Telemetry Message functions
 static void send_airspeed_wind_ekf(struct transport_tx *trans, struct link_device *dev)
@@ -123,11 +126,11 @@ Butterworth2LowPass filt_elevator_pprz;
 Butterworth2LowPass filt_airspeed_pitot;
 
 #ifndef PERIODIC_FREQUENCY_AIRSPEED_EKF_FETCH
-#define PERIODIC_FREQUENCY_AIRSPEED_EKF_FETCH 50
+#define PERIODIC_FREQUENCY_AIRSPEED_EKF_FETCH 100
 #endif
 
 #ifndef PERIODIC_FREQUENCY_AIRSPEED_EKF
-#define PERIODIC_FREQUENCY_AIRSPEED_EKF 25
+#define PERIODIC_FREQUENCY_AIRSPEED_EKF 50
 #endif
 
 void ekf_aw_wrapper_init(void){
@@ -166,20 +169,22 @@ void ekf_aw_wrapper_init(void){
   ekf_aw_init();
   
   // Register ABI message
-  AbiBindMsgRPM(RPM_SENSOR_ID, &RPM_ev, rpm_cb); // TO DO: test if it works with VSQP
+  AbiBindMsgRPM(RPM_SENSOR_ID, &RPM_ev, rpm_cb);
   
 
   //Get EKF param handle
   ekf_params = ekf_aw_get_param_handle();
   
+  // Related to in air / on ground logic
   ekf_aw.in_air = false;
   ekf_aw.internal_clock=0;
   ekf_aw.time_last_on_gnd=0;
 
-  // FOR DEBUG
-  ekf_aw.start = false;
+  // For override of filter using dlsettings
+  ekf_aw.override_start = false;
+  ekf_aw.override_quick_convergence = false;
   
-  // Init of public filter states
+  // Init of public filter states //TO DO: Is it necessary or just safer?
   ekf_aw.last_RPM_hover[0] = 0;ekf_aw.last_RPM_hover[1] = 0;ekf_aw.last_RPM_hover[2] = 0;ekf_aw.last_RPM_hover[3] = 0;
   ekf_aw.last_RPM_pusher = 0;
 
@@ -275,15 +280,17 @@ void ekf_aw_wrapper_periodic(void){
     ekf_aw.V_pitot = filt_airspeed_pitot.o[0];
     
   }
-  
+
   // Sample time of EKF filter
   float sample_time = 1.0 / PERIODIC_FREQUENCY_AIRSPEED_EKF_FETCH;
   
+  // Check if in flight and altitude higher than 1m
   set_in_air_status(autopilot_in_flight() & (-stateGetPositionNed_f()->z>1.0));
 
-  // Only propagate filter if in flight and altitude is higher than 0.5 m
-  if (ekf_aw.start){ // FOR DEBUG (ekf_aw.in_air)
-    if (ekf_aw.internal_clock-ekf_aw.time_last_on_gnd<PERIODIC_FREQUENCY_AIRSPEED_EKF*10){
+  // Propagate
+  if (ekf_aw.in_air | ekf_aw.override_start){
+    // Quick convergence for the first 10 s
+    if ( ((ekf_aw.internal_clock-ekf_aw.time_last_on_gnd<PERIODIC_FREQUENCY_AIRSPEED_EKF*EKF_AW_QUICK_CONVERGENCE_TIME) & EKF_AW_QUICK_CONVERGENCE) | ekf_aw.override_quick_convergence){
       ekf_params->quick_convergence = true;
     }
     else{
@@ -371,8 +378,6 @@ void ekf_aw_wrapper_fetch(void){
   update_butterworth_2_low_pass(&filt_euler[1], stateGetNedToBodyEulers_f()->theta);
   //update_butterworth_2_low_pass(&filt_euler[2], stateGetNedToBodyEulers_f()->psi); // TO DO: implement circular wrap filter for psi angle
 
-
-  // TO DO: TO BE MODIFIED FOR EACH VEHICLE
   for(int8_t i=0; i<4; i++) {
     update_butterworth_2_low_pass(&filt_hover_prop_rpm[i], ekf_aw.last_RPM_hover[i]*1.0f);
   }
@@ -380,16 +385,18 @@ void ekf_aw_wrapper_fetch(void){
 
   if (EKF_AW_WRAPPER_ROT_WING){
     update_butterworth_2_low_pass(&filt_skew, wing_rotation.wing_angle_rad);
+
+    // Get elevator pprz signal
+    int16_t *elev_pprz = &actuators_pprz[5];
+    // Calculate deflection angle in [deg]
+    float de = (-0.004885417 * *elev_pprz + 36.6)*3.14f/180.0f;
+    update_butterworth_2_low_pass(&filt_elevator_pprz, de);
   }
   else{
     update_butterworth_2_low_pass(&filt_skew, 0.0f);
+    update_butterworth_2_low_pass(&filt_elevator_pprz, 0.0f);
   }
   
-  // Get elevator pprz signal
-  int16_t *elev_pprz = &actuators_pprz[5];
-  // Calculate deflection angle in [deg]
-  float de = (-0.004885417 * *elev_pprz + 36.6)*3.14f/180.0f;
-  update_butterworth_2_low_pass(&filt_elevator_pprz, de);
   update_butterworth_2_low_pass(&filt_airspeed_pitot, stateGetAirspeed_f());
 
   // FOR DEBUG
@@ -426,7 +433,7 @@ static void rpm_cb(uint8_t sender_id __attribute__((unused)), struct rpm_act_t *
   }
 };
 
-// set vehicle landed status data
+// Set vehicle landed status data
 	void set_in_air_status(bool in_air)
 	{
 		if (!in_air) {
@@ -441,24 +448,13 @@ static void rpm_cb(uint8_t sender_id __attribute__((unused)), struct rpm_act_t *
   /*
   For this debug config:
 
-  To start the filter manually (won't turn on automatically):
+  To start the filter manually
   -"Start" dlsetting can be used to put filter on
 
   To send random values in the filter:
   - Set define EKF_AW_WRAPPER_RANDOM_INPUTS in ekf_aw_wrapper.c to true
 
   To check filter timing:
-  - time required to run whole filter propagation sent on telemetry AIRSPEED_WIND_ESTIMATOR_EKF "offset_x"
-    Note: Tests on the board alone give a total time of 140 micro sec
-  - time required to run different parts of filter sent on telementry  AIRSPEED_WIND_ESTIMATOR_EKF_FORCES, on different fields
-
-  To check if RPM value received from ABI message are fine:
-  - Pusher RPM is sent on telemetry AIRSPEED_WIND_ESTIMATOR_EKF "debug 1"
-  - Hover RPM [0] is sent on telemetry AIRSPEED_WIND_ESTIMATOR_EKF "debug 2"
-  - Hover RPM [1] is sent on telemetry AIRSPEED_WIND_ESTIMATOR_EKF "debug 3"
+  - time required to run different parts of filter sent on telementry  AIRSPEED_WIND_ESTIMATOR_EKF_FORCES, on different fields, if EKF_AW_DEBUG set to TRUE
   
-  If filter crashes everything, can turn on EKF_AW_TELEMERY_DEBUG in ekf_aw.cpp to true. This will send a telemetry AIRSPEED_WIND_ESTIMATOR_EKF_COV
-   with a number in the "Q_accel" field at different stages of the filter. With the last telemetry message received or logged, this will give an idea of what creates the issue.
-   
-   Note that with the debug option EKF_AW_TELEMERY_DEBUG to true, telemetry messages slow down the filter considerably (runtime from 140 to 550 micro sec)  
   */

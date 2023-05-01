@@ -86,8 +86,9 @@
   <settings>
     <dl_settings>
       <dl_settings name="EKF_Airspeed_Wind">
-        <dl_setting min="0" max="1" step="1" var="ekf_aw.start" module="meteo/ekf_aw_wrapper" shortname="start"/>
-        <dl_setting min="0" max="1" step="1" var="ekf_aw.reset" module="meteo/ekf_aw_wrapper" shortname="reset states and health" handler="reset"/>
+        <dl_setting min="0" max="1" step="1" var="ekf_aw.override_start" module="meteo/ekf_aw_wrapper" shortname="Override Start"/>
+        <dl_setting min="0" max="1" step="1" var="ekf_aw.override_quick_convergence" module="meteo/ekf_aw_wrapper" shortname="Override Quick Convergence"/>
+        <dl_setting min="0" max="1" step="1" var="ekf_aw.reset" module="meteo/ekf_aw_wrapper" shortname="Reset States and Health" handler="reset"/>
         <dl_setting min="0" max="1" step="1" var="ekf_aw_params.propagate_offset" module="meteo/ekf_aw" shortname="propagate offset"/>
 
         <dl_setting min="1E-1" max="8" step="1E-1" var="ekf_aw_params.vehicle_mass" module="meteo/ekf_aw" shortname="Vehicle Mass"/>
@@ -123,8 +124,8 @@
     <file name="ekf_aw_wrapper.h"/>
   </header>
   <init fun="ekf_aw_wrapper_init()"/>
-  <periodic fun="ekf_aw_wrapper_periodic()" freq="25"/>
-  <periodic fun="ekf_aw_wrapper_fetch()" freq="50"/>
+  <periodic fun="ekf_aw_wrapper_periodic()" freq="50"/>
+  <periodic fun="ekf_aw_wrapper_fetch()" freq="100"/>
   <makefile target="ap|nps">
     <file name="ekf_aw.cpp"/>
     <file name="ekf_aw_wrapper.c"/>
